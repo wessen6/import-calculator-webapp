@@ -87,11 +87,28 @@ type FormSnapshot = {
   updatedAt: string | null;
 };
 
+function CloseIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+      className="h-3.5 w-3.5"
+      aria-hidden
+    >
+      <path d="M6 6l12 12M18 6 6 18" />
+    </svg>
+  );
+}
+
 export function RatesSettingsForm() {
   const importInputRef = useRef<HTMLInputElement | null>(null);
   const [settings, setSettings] = useState<StoredRateSettings | null>(null);
   const [configs, setConfigs] = useState<StoredRateConfig[]>([]);
   const [ownerPassword, setOwnerPassword] = useState("");
+  const [ownerVerified, setOwnerVerified] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [importMessage, setImportMessage] = useState<string | null>(null);
   const [importMessageTone, setImportMessageTone] = useState<"info" | "success" | "error">("info");
@@ -229,40 +246,106 @@ export function RatesSettingsForm() {
     );
   }
 
+  function handleOwnerExit() {
+    setOwnerPassword("");
+    setOwnerVerified(false);
+  }
+
   function renderSaveBar(id: string, isSticky = false) {
+    const isAdminMode = ownerVerified && ownerPassword.length > 0;
+    const isPendingAuth = !isAdminMode && ownerPassword.trim().length > 0;
+
+    const statusLabel = isAdminMode
+      ? "Режим администратора"
+      : isPendingAuth
+        ? "Проверка пароля"
+        : "Только просмотр";
+
+    const statusHint = isAdminMode
+      ? "Можно сохранять изменения на сервер."
+      : isPendingAuth
+        ? "Нажмите «Сохранить» — пароль проверится на сервере."
+        : "Введите пароль владельца, чтобы сохранять изменения.";
+
     return (
       <section
-        className={`rounded-xl border border-stone-200 bg-white/95 p-2 shadow-sm backdrop-blur ${
-          isSticky ? "sticky top-0 z-20" : ""
-        }`}
+        className={clsx(
+          "rounded-xl border p-2 shadow-sm backdrop-blur",
+          isSticky && "sticky top-0 z-20",
+          isAdminMode && "border-emerald-300 bg-emerald-50/80",
+          isPendingAuth && "border-amber-200 bg-amber-50/60",
+          !isAdminMode && !isPendingAuth && "border-stone-200 bg-white/95"
+        )}
       >
-        <div className="grid grid-cols-[1fr_auto_auto] gap-2">
-          <input
-            id={id}
-            type="password"
-            value={ownerPassword}
-            onChange={(event) => setOwnerPassword(event.target.value)}
-            placeholder="Пароль владельца"
-            className="h-8 w-full rounded-lg border border-stone-200 bg-stone-50 px-3 text-xs outline-none transition focus:border-stone-400 focus:bg-white"
-          />
-          <button
-            type="button"
-            onClick={handleReset}
-            className="h-8 rounded-full border border-stone-200 bg-white px-3 text-xs font-semibold text-stone-700"
+        <div className="flex items-center gap-2">
+          <span
+            className={clsx(
+              "inline-flex min-w-0 flex-1 items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-semibold",
+              isAdminMode && "bg-emerald-100 text-emerald-800",
+              isPendingAuth && "bg-amber-100 text-amber-900",
+              !isAdminMode && !isPendingAuth && "bg-stone-100 text-stone-600"
+            )}
           >
-            Сброс
-          </button>
-          <button
-            type="button"
-            onClick={handleSave}
-            className="h-8 rounded-full bg-stone-950 px-3 text-xs font-semibold text-white"
-          >
-            Сохранить
-          </button>
+            <span aria-hidden="true">{isAdminMode ? "✓" : isPendingAuth ? "●" : "○"}</span>
+            <span className="truncate">{statusLabel}</span>
+          </span>
+
+          {isAdminMode ? (
+            <>
+              <button
+                type="button"
+                onClick={handleReset}
+                className="h-8 shrink-0 rounded-full border border-stone-200 bg-white px-3 text-xs font-semibold text-stone-700"
+              >
+                Сброс
+              </button>
+              <button
+                type="button"
+                onClick={handleSave}
+                className="h-8 shrink-0 rounded-full bg-stone-950 px-3 text-xs font-semibold text-white"
+              >
+                Сохранить
+              </button>
+              <button
+                type="button"
+                onClick={handleOwnerExit}
+                aria-label="Выйти из режима администратора"
+                className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-rose-500 transition hover:bg-rose-50"
+              >
+                <CloseIcon />
+              </button>
+            </>
+          ) : (
+            <>
+              <input
+                id={id}
+                type="password"
+                value={ownerPassword}
+                onChange={(event) => {
+                  setOwnerPassword(event.target.value);
+                  setOwnerVerified(false);
+                }}
+                placeholder="Пароль владельца"
+                className="h-8 min-w-0 flex-1 rounded-lg border border-stone-200 bg-stone-50 px-3 text-xs outline-none transition focus:border-stone-400 focus:bg-white"
+              />
+              <button
+                type="button"
+                onClick={handleReset}
+                className="h-8 shrink-0 rounded-full border border-stone-200 bg-white px-3 text-xs font-semibold text-stone-700"
+              >
+                Сброс
+              </button>
+              <button
+                type="button"
+                onClick={handleSave}
+                className="h-8 shrink-0 rounded-full bg-stone-950 px-3 text-xs font-semibold text-white"
+              >
+                Сохранить
+              </button>
+            </>
+          )}
         </div>
-        <p className="mt-1 truncate text-[11px] text-stone-500">
-          Без пароля можно просматривать ставки, но нельзя их изменять.
-        </p>
+        <p className="mt-1 truncate text-[11px] text-stone-500">{statusHint}</p>
       </section>
     );
   }
@@ -308,6 +391,7 @@ export function RatesSettingsForm() {
     }
 
     setPreImportSnapshot(null);
+    setOwnerVerified(true);
     setImportMessageTone("success");
     setImportMessage("Ставки сохранены на сервере. Данные доступны для новых расчётов.");
   }
