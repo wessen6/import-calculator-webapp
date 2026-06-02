@@ -5,29 +5,19 @@
 ---
 
 ```
-Продолжи Next.js проект import-calculator-webapp.
+Продолжи Next.js import-calculator-webapp.
 
-Репозиторий: https://github.com/wessen6/import-calculator-webapp (ветка main).
-Документация: PROJECT.md, CHANGELOG.md, BACKLOG.md, SESSION_SUMMARY.md.
+Git: https://github.com/wessen6/import-calculator-webapp (main, HEAD e21b59d — фаза 1 ставок в репо).
+Доки: PROJECT.md, CHANGELOG.md, BACKLOG.md, SESSION_SUMMARY.md.
 
-Продукт: импортный расчёт (инвойс OCR + OpenRouter), история в localStorage, ставки на сервере (.app-data/rates.json), UI /calculations, /calculations/new, /settings/rates.
+Продукт: импортный расчёт (OCR + OpenRouter), история localStorage, ставки .app-data/rates.json.
+Маршруты: /calculations, /calculations/new, /settings/rates.
 
-Ставки (фаза 1 сделана):
-- Один набор на компанию; редактор — пароль OWNER_ADMIN_PASSWORD (MVP).
-- JSON export/import (полный файл); импорт → форма → «Сохранить»; «Вернуть как было» до сохранения.
-- Уведомление в блоке JSON: info / success (сохранено) / error.
-- updated_at глобально + по маршруту/перевозке; показ на «Ставки» и «Новый расчёт».
-- lib/rates-payload.ts, seed data/rates.seed.json, backup rates.backup.json, GET no-store.
+Ставки (готово): JSON полный файл, импорт→форма→Сохранить, «Вернуть как было», уведомления success/error в блоке JSON, updated_at на маршруте/перевозке, seed+backup, lib/rates-payload.ts.
 
-Не трогать n8n (kustom_simplified_v3.json — reference only).
-Mock-расчёты только в development (lib/dev-fallback-calculations.ts).
+Не трогать n8n. Mock только в dev.
 
-Старт:
-1. npm run typecheck && npm run lint
-2. npm run dev (или npm run dev -- --webpack -p 3000)
-3. Проверить /calculations, /calculations/new, /settings/rates
+Старт: npm run typecheck && npm run lint → npm run dev (или --webpack -p 3000) → smoke трёх маршрутов.
 
-Дальше по BACKLOG.md: деплой VPS (imcalc.*), Supabase (ставки + история), закрыть публичный GET /api/rates (запомнено на потом).
-
-Перед нетривиальными правками — короткий план. Обновляй PROJECT.md / CHANGELOG.md при заметных изменениях.
+Следующий приоритет: деплой VPS (imcalc.*, persistent .app-data) — см. BACKLOG.md. План перед крупными правками. Не коммить без команды.
 ```
