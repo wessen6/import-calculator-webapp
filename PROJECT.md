@@ -65,8 +65,9 @@ npm run start
 ```
 
 - Mock-расчёты (`lib/mock-data.ts`) подмешиваются **только в `development`** (`lib/dev-fallback-calculations.ts`).
-- На VPS нужен персистентный каталог `.app-data` и бэкап `rates.json` (или JSON export из `/settings/rates`).
-- Ставки: `data/rates.seed.json` (первый запуск), `data/rates.example.json` (шаблон), `.app-data/rates.backup.json` (предыдущее сохранение). См. `BACKLOG.md` для фазы D.
+- **Production:** VPS Beget, домен `imcalc.*` — см. [deploy/DEPLOY.md](./deploy/DEPLOY.md).
+- Персистентные ставки: `APP_DATA_DIR` (рекомендуется `/var/lib/imcalc/app-data`) или `.app-data` в cwd.
+- Seed: `data/rates.seed.json`, шаблон `data/rates.example.json`, автобэкап `.app-data/rates.backup.json`.
 
 ## Проверки качества
 
@@ -87,7 +88,7 @@ npm run start
 - **Авторизация** ставок — пароль в `x-owner-password`, не полноценный auth.
 - **OCR/OpenRouter** — лимиты API, редкие `502` на extract.
 - **README.md** устарел (описывает только mock MVP); актуальная картина — этот файл и `CHANGELOG.md`.
-- **Деплой** (Vercel vs Beget VPS) не зафиксирован в инфраструктуре.
+- **Деплой:** черновик VPS в [deploy/DEPLOY.md](./deploy/DEPLOY.md) (Beget, systemd, nginx, cron); Supabase — позже.
 - **Supabase** — схема есть, интеграция в UI не завершена.
 - **Логирование** — централизованного нет; см. рекомендации в `CHANGELOG.md` / ответ агента по dev-логам в API routes.
 
@@ -98,5 +99,5 @@ npm run start
 - `SESSION_SUMMARY.md` — полный handoff последней сессии
 - `RESUME_PROMPT.md` — вставить в новую вкладку Cursor
 - `HANDOFF_PROMPT.md` — запросить handoff в конце сессии
-- `BACKLOG.md` — задачи фазы D+
+- `deploy/DEPLOY.md` — деплой на VPS
 - `.env.example` — переменные окружения

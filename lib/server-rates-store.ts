@@ -24,7 +24,9 @@ export {
   normalizeRatesPayload
 } from "./rates-payload";
 
-const dataDirectory = path.join(process.cwd(), ".app-data");
+const dataDirectory = process.env.APP_DATA_DIR
+  ? path.resolve(process.env.APP_DATA_DIR)
+  : path.join(process.cwd(), ".app-data");
 const ratesFilePath = path.join(dataDirectory, "rates.json");
 const ratesBackupFilePath = path.join(dataDirectory, "rates.backup.json");
 const ratesSeedFilePath = path.join(process.cwd(), "data", "rates.seed.json");

@@ -52,6 +52,8 @@ npm run lint
 npm run build
 ```
 
+**Production:** [deploy/DEPLOY.md](./deploy/DEPLOY.md) (VPS Beget, `imcalc.*`).
+
 ## Структура (кратко)
 
 ```text

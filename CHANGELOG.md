@@ -6,6 +6,21 @@
 
 ---
 
+## 2026-06-02 (деплой VPS — черновик)
+
+### Добавлено
+
+- `deploy/DEPLOY.md` — инструкция Beget VPS (`imcalc.*`, persistent data, systemd, nginx, cron).
+- `deploy/imcalc.service`, `deploy/nginx-imcalc.conf`, `deploy/backup-rates.sh`.
+- `APP_DATA_DIR` в `lib/server-rates-store.ts` — каталог ставок вне git checkout.
+
+### Изменено
+
+- `.env.example` — комментарий `APP_DATA_DIR`.
+- `PROJECT.md` — ссылка на deploy, уточнён prod-путь.
+
+---
+
 ## 2026-06-02 (ставки, фаза 1)
 
 ### Добавлено

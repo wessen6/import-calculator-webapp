@@ -7,6 +7,8 @@
 - [ ] **Supabase** — хранение ставок (и позже истории расчётов по пользователю)
 - [ ] **Автоматизация обновления ставок** — cron/скрипт → `PUT /api/rates` или sync из внешней «базы источник»
 - [ ] **Деплой на VPS (Beget)** — `imcalc.*`, persistent `.app-data`, systemd, бэкап cron
+  - [x] Черновик: `deploy/DEPLOY.md` + unit/nginx/backup script + `APP_DATA_DIR`
+  - [ ] Фактический деплой на сервер и smoke на домене
 - [ ] **Закрыть публичный `GET /api/rates`** — auth / API key (сейчас OK для MVP)
 
 ## Продукт
