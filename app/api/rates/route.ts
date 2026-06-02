@@ -16,7 +16,13 @@ function isOwnerAuthorized(request: Request) {
 }
 
 export async function GET() {
-  return NextResponse.json(await readRatesPayload());
+  const payload = await readRatesPayload();
+
+  return NextResponse.json(payload, {
+    headers: {
+      "Cache-Control": "no-store"
+    }
+  });
 }
 
 export async function PUT(request: Request) {

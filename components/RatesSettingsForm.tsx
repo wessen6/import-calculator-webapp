@@ -1,9 +1,12 @@
 "use client";
 
+import clsx from "clsx";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { formatDate } from "@/lib/format";
+import { formatDateTime } from "@/lib/format";
+import { getEffectiveConfigUpdatedAt } from "@/lib/rates-display";
 import { TRANSPORT_TYPE_OPTIONS } from "@/lib/rates-config";
-import type { StoredRateConfig, StoredRateSettings } from "@/lib/server-rates-store";
+import { normalizeRatesPayload } from "@/lib/rates-payload";
+import type { StoredRateConfig, StoredRateSettings } from "@/lib/rates-payload";
 import type { RouteCode, TransportType } from "@/lib/types";
 
 type RatesApiResponse = {
@@ -78,14 +81,21 @@ function parseInputNumber(value: string) {
   return Number.isFinite(parsed) ? parsed : null;
 }
 
+type FormSnapshot = {
+  settings: StoredRateSettings;
+  configs: StoredRateConfig[];
+  updatedAt: string | null;
+};
+
 export function RatesSettingsForm() {
   const importInputRef = useRef<HTMLInputElement | null>(null);
   const [settings, setSettings] = useState<StoredRateSettings | null>(null);
   const [configs, setConfigs] = useState<StoredRateConfig[]>([]);
   const [ownerPassword, setOwnerPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
-  const [saved, setSaved] = useState(false);
   const [importMessage, setImportMessage] = useState<string | null>(null);
+  const [importMessageTone, setImportMessageTone] = useState<"info" | "success" | "error">("info");
+  const [preImportSnapshot, setPreImportSnapshot] = useState<FormSnapshot | null>(null);
   const [updatedAt, setUpdatedAt] = useState<string | null>(null);
   const [draftInputs, setDraftInputs] = useState<Record<string, string>>({});
   const [selectedTransportByRoute, setSelectedTransportByRoute] = useState<
@@ -117,16 +127,18 @@ export function RatesSettingsForm() {
     setConfigs((current) =>
       current.map((config) =>
         config.route_code === routeCode && config.transport_type === transportType
-          ? { ...config, ...patch }
+          ? {
+              ...config,
+              ...patch,
+              updated_at: new Date().toISOString()
+            }
           : config
       )
     );
-    setSaved(false);
   }
 
   function updateSettings(patch: Partial<StoredRateSettings>) {
     setSettings((current) => (current ? { ...current, ...patch } : current));
-    setSaved(false);
   }
 
   function getDraftValue(key: string, value: number) {
@@ -257,7 +269,17 @@ export function RatesSettingsForm() {
 
   async function handleSave() {
     setError(null);
-    setSaved(false);
+    if (!settings) {
+      setImportMessageTone("error");
+      setImportMessage("Нет данных для сохранения. Обновите страницу.");
+      return;
+    }
+
+    if (!ownerPassword.trim()) {
+      setImportMessageTone("error");
+      setImportMessage("Введите пароль владельца и нажмите «Сохранить» снова.");
+      return;
+    }
 
     const response = await fetch("/api/rates", {
       method: "PUT",
@@ -270,7 +292,8 @@ export function RatesSettingsForm() {
     const data = (await response.json()) as RatesApiResponse;
 
     if (!response.ok) {
-      setError(data.error ?? "Не удалось сохранить ставки.");
+      setImportMessageTone("error");
+      setImportMessage(data.error ?? "Не удалось сохранить ставки. Проверьте пароль владельца.");
       return;
     }
 
@@ -284,11 +307,14 @@ export function RatesSettingsForm() {
       setUpdatedAt(data.updated_at);
     }
 
-    setSaved(true);
+    setPreImportSnapshot(null);
+    setImportMessageTone("success");
+    setImportMessage("Ставки сохранены на сервере. Данные доступны для новых расчётов.");
   }
 
   function handleExportRates() {
     if (!settings) {
+      setImportMessageTone("error");
       setImportMessage("Ставки ещё не загружены — подождите или обновите страницу.");
       return;
     }
@@ -311,6 +337,20 @@ export function RatesSettingsForm() {
     URL.revokeObjectURL(url);
   }
 
+  function handleRevertImport() {
+    if (!preImportSnapshot) {
+      return;
+    }
+
+    setSettings(preImportSnapshot.settings);
+    setConfigs(preImportSnapshot.configs);
+    setUpdatedAt(preImportSnapshot.updatedAt);
+    setDraftInputs({});
+    setPreImportSnapshot(null);
+    setImportMessageTone("info");
+    setImportMessage("Импорт отменён. Восстановлены значения до загрузки файла.");
+  }
+
   async function handleImportRates(file: File | undefined) {
     if (!file) return;
 
@@ -318,21 +358,34 @@ export function RatesSettingsForm() {
     setImportMessage(null);
 
     try {
-      const payload = JSON.parse(await file.text()) as unknown;
+      if (!settings) {
+        throw new Error("Дождитесь загрузки ставок с сервера.");
+      }
 
-      if (!isRatesImportPayload(payload)) {
+      const raw = JSON.parse(await file.text()) as unknown;
+
+      if (!isRatesImportPayload(raw)) {
         throw new Error("Неверный формат: нужны поля settings и configs.");
       }
 
-      setSettings(payload.settings);
-      setConfigs(payload.configs);
-      setUpdatedAt(payload.updated_at ?? null);
+      setPreImportSnapshot({
+        settings,
+        configs,
+        updatedAt
+      });
+
+      const normalized = normalizeRatesPayload(raw);
+      setSettings(normalized.settings);
+      setConfigs(normalized.configs);
+      setUpdatedAt(normalized.updated_at ?? null);
       setDraftInputs({});
-      setSaved(false);
+      setImportMessageTone("info");
       setImportMessage(
         "Ставки загружены в форму. Проверьте значения и нажмите «Сохранить» с паролем владельца."
       );
     } catch (importError) {
+      setPreImportSnapshot(null);
+      setImportMessageTone("error");
       setImportMessage(
         importError instanceof Error
           ? importError.message
@@ -353,7 +406,6 @@ export function RatesSettingsForm() {
         }
         setUpdatedAt(data.updated_at ?? null);
       });
-    setSaved(false);
   }
 
   function getSelectedTransport(group: (typeof routeGroups)[number]) {
@@ -513,12 +565,6 @@ export function RatesSettingsForm() {
     <div className="space-y-4">
       {renderSaveBar("owner_password_top", true)}
 
-      {updatedAt ? (
-        <p className="text-sm text-stone-500">
-          Обновлено: <span className="font-medium text-stone-700">{formatDate(updatedAt)}</span>
-        </p>
-      ) : null}
-
       <section className="rounded-[1.5rem] border border-stone-200 bg-white p-4 shadow-sm">
         <div className="grid grid-cols-2 gap-3">
           <button
@@ -551,15 +597,39 @@ export function RatesSettingsForm() {
           импортируйте на сервере или другом устройстве.
         </p>
         {importMessage ? (
-          <p className="mt-2 rounded-2xl bg-stone-50 px-3 py-2 text-sm text-stone-700">
+          <p
+            className={clsx(
+              "mt-2 rounded-2xl px-3 py-2 text-sm",
+              importMessageTone === "success" && "bg-emerald-50 text-emerald-800",
+              importMessageTone === "error" && "bg-rose-50 text-rose-700",
+              importMessageTone === "info" && "bg-stone-50 text-stone-700"
+            )}
+          >
             {importMessage}
           </p>
+        ) : null}
+        {preImportSnapshot ? (
+          <button
+            type="button"
+            onClick={handleRevertImport}
+            className="mt-3 w-full rounded-full border border-stone-200 bg-white px-4 py-3 text-sm font-semibold text-stone-700"
+          >
+            Вернуть как было (до импорта)
+          </button>
         ) : null}
       </section>
 
       {settings ? (
         <section className="rounded-[2rem] border border-stone-200 bg-white p-4 shadow-sm">
-          <h2 className="text-base font-semibold text-stone-950">Общие ставки</h2>
+          <div className="flex items-start justify-between gap-2">
+            <h2 className="text-base font-semibold text-stone-950">Общие ставки</h2>
+            {updatedAt ? (
+              <p className="shrink-0 text-right text-[11px] leading-tight text-stone-500">
+                <span className="block text-stone-400">Обновлено</span>
+                <span className="font-medium text-stone-700">{formatDateTime(updatedAt)}</span>
+              </p>
+            ) : null}
+          </div>
           <div className="mt-4 grid grid-cols-3 gap-2 sm:gap-3">
             <label className="text-sm font-semibold text-stone-900">
               Пошлина
@@ -682,7 +752,19 @@ export function RatesSettingsForm() {
               key={group.route_code}
               className="rounded-[2rem] border border-stone-200 bg-white p-4 shadow-sm"
             >
-              <h2 className="text-base font-semibold text-stone-950">{group.route_label}</h2>
+              <div className="flex items-start justify-between gap-2">
+                <h2 className="text-base font-semibold text-stone-950">{group.route_label}</h2>
+                {(() => {
+                  const stamp = getEffectiveConfigUpdatedAt(activeConfig, updatedAt);
+
+                  return stamp ? (
+                    <p className="shrink-0 text-right text-[11px] leading-tight text-stone-500">
+                      <span className="block text-stone-400">Обновлено</span>
+                      <span className="font-medium text-stone-700">{formatDateTime(stamp)}</span>
+                    </p>
+                  ) : null;
+                })()}
+              </div>
 
               <label className="mt-4 block text-sm font-semibold text-stone-900">
                 Тип перевозки
@@ -693,7 +775,6 @@ export function RatesSettingsForm() {
                       ...current,
                       [group.route_code]: event.target.value as TransportType
                     }));
-                    setSaved(false);
                   }}
                   className="mt-2 w-full rounded-2xl border border-stone-200 bg-stone-50 px-4 py-3 text-base outline-none transition focus:border-stone-400 focus:bg-white"
                 >
@@ -710,12 +791,6 @@ export function RatesSettingsForm() {
           );
         })}
       </div>
-
-      {saved ? (
-        <p className="rounded-2xl border border-emerald-100 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
-          Ставки сохранены.
-        </p>
-      ) : null}
 
       {error ? (
         <p className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">

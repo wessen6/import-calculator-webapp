@@ -66,6 +66,7 @@ npm run start
 
 - Mock-расчёты (`lib/mock-data.ts`) подмешиваются **только в `development`** (`lib/dev-fallback-calculations.ts`).
 - На VPS нужен персистентный каталог `.app-data` и бэкап `rates.json` (или JSON export из `/settings/rates`).
+- Ставки: `data/rates.seed.json` (первый запуск), `data/rates.example.json` (шаблон), `.app-data/rates.backup.json` (предыдущее сохранение). См. `BACKLOG.md` для фазы D.
 
 ## Проверки качества
 
@@ -94,5 +95,8 @@ npm run start
 
 - `README.md` — стартовый readme (частично устарел)
 - `CHANGELOG.md` — журнал изменений
-- `SESSION_SUMMARY.md` — handoff между сессиями агента (не замена PROJECT.md)
+- `SESSION_SUMMARY.md` — полный handoff последней сессии
+- `RESUME_PROMPT.md` — вставить в новую вкладку Cursor
+- `HANDOFF_PROMPT.md` — запросить handoff в конце сессии
+- `BACKLOG.md` — задачи фазы D+
 - `.env.example` — переменные окружения

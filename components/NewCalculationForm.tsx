@@ -2,8 +2,10 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { formatDateTime } from "@/lib/format";
+import { getEffectiveConfigUpdatedAt } from "@/lib/rates-display";
 import { TRANSPORT_TYPE_OPTIONS } from "@/lib/rates-config";
-import type { StoredRateConfig, StoredRateSettings } from "@/lib/server-rates-store";
+import type { StoredRateConfig, StoredRateSettings } from "@/lib/rates-payload";
 import { createStoredCalculation, getFixedRussianExpensesRub } from "@/lib/storage";
 import type { CurrencyCode, RouteCode, TransportType } from "@/lib/types";
 import { FileUploadZone } from "./FileUploadZone";
@@ -18,6 +20,7 @@ type ExchangeRateApiResponse = {
 type RatesApiResponse = {
   configs?: StoredRateConfig[];
   settings?: StoredRateSettings;
+  updated_at?: string | null;
 };
 
 type ExtractFileDataResponse = {
@@ -52,6 +55,7 @@ export function NewCalculationForm() {
   const [needsManualRate, setNeedsManualRate] = useState(false);
   const [rateConfigs, setRateConfigs] = useState<StoredRateConfig[]>([]);
   const [rateSettings, setRateSettings] = useState<StoredRateSettings | null>(null);
+  const [ratesUpdatedAt, setRatesUpdatedAt] = useState<string | null>(null);
   const [selectedRoute, setSelectedRoute] = useState<StoredRateConfig | null>(null);
   const [productName, setProductName] = useState("");
   const [quantity, setQuantity] = useState("");
@@ -87,6 +91,7 @@ export function NewCalculationForm() {
         const configs = data.configs ?? [];
         setRateConfigs(configs);
         setRateSettings(data.settings ?? null);
+        setRatesUpdatedAt(data.updated_at ?? null);
         setSelectedRoute(configs[0] ?? null);
       })
       .catch(() => setFormError("Не удалось загрузить ставки маршрутов."));
@@ -441,7 +446,21 @@ export function NewCalculationForm() {
           </select>
         </div>
 
-        <div className="mt-4">
+        <div className="mt-4 flex items-center justify-between gap-2">
+          <span className="text-sm font-semibold text-stone-900">Маршрут и перевозка</span>
+          {(() => {
+            const stamp = getEffectiveConfigUpdatedAt(selectedRoute, ratesUpdatedAt);
+
+            return stamp ? (
+              <span className="shrink-0 text-right text-[11px] leading-tight text-stone-500">
+                <span className="block text-stone-400">Ставки обновлены</span>
+                <span className="font-medium text-stone-700">{formatDateTime(stamp)}</span>
+              </span>
+            ) : null;
+          })()}
+        </div>
+
+        <div className="mt-2">
           <label className="text-sm font-semibold text-stone-900" htmlFor="transport_type">
             Тип перевозки
           </label>

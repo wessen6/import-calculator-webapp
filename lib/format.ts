@@ -7,6 +7,16 @@ export function formatDate(value: string) {
   }).format(new Date(value));
 }
 
+export function formatDateTime(value: string) {
+  return new Intl.DateTimeFormat("ru-RU", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit"
+  }).format(new Date(value));
+}
+
 export function formatMoney(value: number, currency = "RUB") {
   return new Intl.NumberFormat("ru-RU", {
     style: "currency",
