@@ -1,78 +1,68 @@
 # Import Calculator Web App
 
-Mobile-first web app MVP for import cost calculations. The app is independent from Telegram and currently uses mock data while the Supabase backend is being connected.
+Mobile-first веб-приложение для **импортного расчёта**: инвойс (OCR), ставки маршрутов, история в браузере.
 
-## Stack
+**Репозиторий:** https://github.com/wessen6/import-calculator-webapp  
+**Подробная документация:** [PROJECT.md](./PROJECT.md) · журнал изменений: [CHANGELOG.md](./CHANGELOG.md)
 
-- Next.js App Router
-- TypeScript
-- Tailwind CSS
-- Supabase-ready data model
+## Стек
 
-## Pages
+- Next.js (App Router), React, TypeScript, Tailwind CSS
+- API: `app/api/*` (курсы ЦБ, OCR/LLM, ставки)
+- Расчёты: `localStorage` + JSON export/import
+- Ставки: `.app-data/rates.json` (сервер), пароль владельца в header
+- Supabase: схема в `supabase/schema.sql` (интеграция в UI — в планах)
 
-- `/calculations` - calculation history
-- `/calculations/new` - create a new calculation
-- `/calculations/[id]` - calculation details
+## Страницы
 
-## Project Structure
+| Маршрут | Назначение |
+|---------|------------|
+| `/calculations` | История расчётов |
+| `/calculations/new` | Новый расчёт (инвойс, OCR) |
+| `/calculations/[id]` | Карточка расчёта |
+| `/settings/rates` | Ставки (маршруты, перевозка, JSON backup) |
 
-```text
-app/
-  calculations/
-    [id]/
-    new/
-components/
-  AppShell.tsx
-  MobileHeader.tsx
-  StatusBadge.tsx
-  CalculationCard.tsx
-  NewCalculationForm.tsx
-  FileUploadZone.tsx
-  EmptyState.tsx
-lib/
-  mock-data.ts
-  status.ts
-  types.ts
-  supabase/client.ts
-supabase/
-  schema.sql
-```
+Демо-карточки из `mock-data` показываются **только в `npm run dev`**, не в production-сборке.
 
-## Statuses
-
-The internal statuses are:
-
-- `need_more_data` - Нужно уточнение
-- `ready_for_confirmation` - Готово к подтверждению
-- `processing` - Расчёт выполняется
-- `completed` - Расчёт выполнен
-- `error` - Ошибка
-
-## Routes
-
-The data model already includes `route_code` for future delivery route selection. The MVP default is `china-russia`.
-
-## Local Development
+## Быстрый старт
 
 ```bash
 npm install
+cp .env.example .env.local
 npm run dev
 ```
 
-Copy `.env.example` to `.env.local` and fill Supabase values when the backend is ready:
+Открыть: http://localhost:3000/calculations
+
+При сбоях Turbopack:
 
 ```bash
-NEXT_PUBLIC_SUPABASE_URL=
-NEXT_PUBLIC_SUPABASE_ANON_KEY=
+npm run dev -- --webpack -p 3000
 ```
 
-## Supabase
+### Переменные (`.env.local`)
 
-The starter schema is in `supabase/schema.sql` and includes:
+См. [.env.example](./.env.example): `OWNER_ADMIN_PASSWORD`, `OCR_SPACE_API_KEY`, `OPENROUTER_API_KEY`, опционально Supabase.
 
-- `profiles`
-- `calculations`
-- `calculation_files`
+## Проверки
 
-The schema enables RLS and keeps user data scoped by `auth.uid()`.
+```bash
+npm run typecheck
+npm run lint
+npm run build
+```
+
+## Структура (кратко)
+
+```text
+app/           # страницы и API
+components/    # UI
+lib/           # расчёт, storage, rates, OCR helpers
+supabase/      # schema.sql
+```
+
+Полное дерево и риски — в [PROJECT.md](./PROJECT.md).
+
+## n8n
+
+Файл `kustom_simplified_v3.json` — **reference only**, не часть runtime приложения.
