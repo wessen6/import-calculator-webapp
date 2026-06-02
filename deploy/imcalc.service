@@ -4,12 +4,14 @@ After=network.target
 
 [Service]
 Type=simple
-User=www-data
-Group=www-data
+User=root
+Group=root
 WorkingDirectory=/var/www/imcalc/app
 Environment=NODE_ENV=production
 EnvironmentFile=/var/www/imcalc/app/.env.local
-ExecStart=/usr/bin/npm run start -- -p 3000 -H 127.0.0.1
+# 0.0.0.0 — Traefik в Docker достучится через 172.17.0.1:3000.
+# Только nginx на том же хосте: можно -H 127.0.0.1
+ExecStart=/usr/bin/npm run start -- -p 3000 -H 0.0.0.0
 Restart=on-failure
 RestartSec=5
 

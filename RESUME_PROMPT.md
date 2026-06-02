@@ -7,17 +7,15 @@
 ```
 Продолжи Next.js import-calculator-webapp.
 
-Git: https://github.com/wessen6/import-calculator-webapp (main; локально — черновик деплоя, не закоммичен).
-Доки: PROJECT.md, CHANGELOG.md, BACKLOG.md, deploy/DEPLOY.md, SESSION_SUMMARY.md.
+Git: https://github.com/wessen6/import-calculator-webapp (main).
+Prod: https://imcalc.wessen.online (Beget VPS, systemd + Traefik /opt/beget/n8n).
+Доки: PROJECT.md, deploy/DEPLOY.md, CHANGELOG.md, BACKLOG.md, SESSION_SUMMARY.md.
 
-Продукт: импортный расчёт (OCR + OpenRouter), история localStorage, ставки APP_DATA_DIR / .app-data/rates.json.
+Продукт: импортный расчёт, localStorage, ставки APP_DATA_DIR.
 Маршруты: /calculations, /calculations/new, /settings/rates.
 
-Готово: фаза 1 ставок; черновик VPS (deploy/*, APP_DATA_DIR).
+Обновление prod: git push → на VPS `update-imcalc.sh`.
 
-Не трогать n8n. Mock только в dev.
-
-Старт: npm run typecheck && npm run lint → smoke маршрутов → деплой на Beget по deploy/DEPLOY.md.
-
-Следующий приоритет: фактический деплой imcalc.* на VPS. Не коммить без команды.
+Не трогать n8n runtime. Mock только в dev.
+Не коммить без команды.
 ```

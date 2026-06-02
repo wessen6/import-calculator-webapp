@@ -6,9 +6,10 @@
 
 - [ ] **Supabase** — хранение ставок (и позже истории расчётов по пользователю)
 - [ ] **Автоматизация обновления ставок** — cron/скрипт → `PUT /api/rates` или sync из внешней «базы источник»
-- [ ] **Деплой на VPS (Beget)** — `imcalc.*`, persistent `.app-data`, systemd, бэкап cron
-  - [x] Черновик: `deploy/DEPLOY.md` + unit/nginx/backup script + `APP_DATA_DIR`
-  - [ ] Фактический деплой на сервер и smoke на домене
+- [x] **Деплой на VPS (Beget)** — https://imcalc.wessen.online, Traefik + systemd, `APP_DATA_DIR`
+  - [x] Доки: `deploy/DEPLOY.md`, `traefik-imcalc.yml`, `update-imcalc.sh`
+  - [ ] cron бэкапа ставок на VPS
+  - [ ] OCR/OpenRouter ключи в prod `.env.local`
 - [ ] **Закрыть публичный `GET /api/rates`** — auth / API key (сейчас OK для MVP)
 
 ## Продукт
@@ -20,4 +21,4 @@
 
 ## Документация
 
-- [ ] Обновить `README.md` после деплоя (URL, env на сервере)
+- [x] Обновить `README.md` после деплоя (URL, env на сервере)

@@ -1,86 +1,63 @@
 # SESSION_SUMMARY.md
 
-Handoff: конец сессии (июнь 2026). Старт в новой вкладке → `RESUME_PROMPT.md`.
+Handoff: июнь 2026. Старт в новой вкладке → `RESUME_PROMPT.md`.
 
 ## 1. Что уже сделано
 
 ### MVP приложения
 
 - Next.js: `/calculations`, `/calculations/new`, `/calculations/[id]`, `/settings/rates`.
-- OCR (OCR.space) + OpenRouter; расчёт себестоимости; история в `localStorage` + JSON export/import.
-- UI истории: удаление, meta валюта·курс, 4 колонки итога, copy 6 полей (2 строки в чат).
-- Mock-расчёты только в `development` (`lib/dev-fallback-calculations.ts`).
+- OCR (OCR.space) + OpenRouter; расчёт; история `localStorage` + JSON export/import.
+- Mock-расчёты только в `development`.
 
-### Ставки — фаза 1 (завершена, в git)
+### Ставки — фаза 1
 
-- `.app-data/rates.json`, `GET/PUT /api/rates`, пароль `OWNER_ADMIN_PASSWORD`.
-- JSON export/import (полный файл); нормализация `lib/rates-payload.ts`.
-- Импорт → форма → «Сохранить»; «Вернуть как было» до сохранения.
-- Уведомления в блоке JSON: info / **success** / **error** (в т.ч. после сохранения после импорта).
-- `updated_at` глобально + по маршруту/перевозке; `formatDateTime` на «Ставки» и «Новый расчёт».
-- Seed `data/rates.seed.json`, шаблон `data/rates.example.json`, `rates.backup.json`, `GET` no-store.
+- `APP_DATA_DIR` / `.app-data/rates.json`, `GET/PUT /api/rates`, JSON import/export, seed, backup.
 
-### Деплой VPS — черновик (локально, не закоммичено)
+### Prod — Beget VPS (работает)
 
-- `deploy/DEPLOY.md` — пошаговая инструкция Beget: каталоги, env, build, systemd, nginx, certbot, cron.
-- `deploy/imcalc.service`, `deploy/nginx-imcalc.conf`, `deploy/backup-rates.sh`.
-- `APP_DATA_DIR` в `lib/server-rates-store.ts` — persistent data вне checkout (`/var/lib/imcalc/app-data`).
+| URL | Сервис |
+|-----|--------|
+| https://imcalc.wessen.online | imcalc (systemd, `/var/www/imcalc/app`) |
+| https://n8n.wessen.online | n8n (`/opt/beget/n8n`, Docker + Traefik) |
 
-### Порядок и git
+- Traefik file provider: `/opt/beget/n8n/traefik_dynamic/imcalc.yml` → `172.17.0.1:3000`.
+- imcalc: `-H 0.0.0.0:3000` (иначе 502 из Docker).
+- Обновление: `git push` → `update-imcalc.sh` на VPS.
 
-- `PROJECT.md`, `CHANGELOG.md`, `BACKLOG.md`, `.cursor/rules/project.mdc`.
-- GitHub: `wessen6/import-calculator-webapp`, ветка `main`, последний коммит **`e21b59d`**.
-- **Новые изменения сессии** — в рабочем дереве, коммит по команде пользователя.
+### Git
 
-## 2. Файлы (ключевые за сессию)
+- GitHub: `wessen6/import-calculator-webapp`, ветка `main`.
 
-| Область | Файлы |
-|---------|--------|
-| Деплой | `deploy/DEPLOY.md`, `deploy/imcalc.service`, `deploy/nginx-imcalc.conf`, `deploy/backup-rates.sh` |
-| Ставки | `lib/server-rates-store.ts` (`APP_DATA_DIR`), `.env.example` |
-| Доки | `PROJECT.md`, `CHANGELOG.md`, `BACKLOG.md`, `README.md`, `SESSION_SUMMARY.md` |
+## 2. Файлы деплоя
+
+| Файл | Назначение |
+|------|------------|
+| `deploy/DEPLOY.md` | Traefik (§A) + nginx (§B), env, smoke |
+| `deploy/imcalc.service` | systemd, `0.0.0.0:3000` |
+| `deploy/traefik-imcalc.yml` | шаблон для `/opt/beget/n8n/traefik_dynamic/` |
+| `deploy/update-imcalc.sh` | pull + build + restart |
+| `deploy/backup-rates.sh` | cron-бэкап ставок |
 
 ## 3. Решения
 
 | Тема | Решение |
 |------|---------|
-| Ставки | Одни на компанию; JSON — полный файл (вариант A) |
-| Редакторы | Общий пароль владельца в MVP |
-| Пользователи | Считают и видят ставки; личная история — позже |
-| Прод | **VPS Beget** + `APP_DATA_DIR`; потом Supabase |
-| GET `/api/rates` | Публичный OK сейчас; закрыть при масштабировании |
-| n8n | Reference only |
-| Домен прод | `imcalc.*`; dev — localhost |
+| Прод | VPS Beget, Traefik (n8n) + systemd (imcalc) |
+| Домены | `imcalc.wessen.online`, `n8n.wessen.online` |
+| n8n в репо | reference only, runtime на VPS отдельно |
 
 ## 4. Что осталось
 
-- **Фактический деплой** на VPS по `deploy/DEPLOY.md` (DNS, TLS, smoke на домене).
-- **Supabase**: ставки, auth, история по пользователю.
-- Автоматизация обновления ставок (cron/API) — после ручного процесса на проде.
-- См. чеклист в `BACKLOG.md`.
+- cron бэкапа ставок на VPS
+- OCR/OpenRouter ключи в prod `.env.local`
+- Supabase, auth, личная история — позже
+- Google Safe Browsing (Chrome) — Search Console при необходимости
 
-## 5. Блокеры / риски
+## 5. Следующий шаг
 
-- История только в `localStorage`.
-- Потеря `APP_DATA_DIR` без бэкапа на VPS.
-- OCR/OpenRouter — лимиты, редкий 502.
-- Проект в Google Drive Sync — возможны lock при dev.
-- Turbopack: `npm run dev -- --webpack -p 3000` при сбоях.
+Продуктовые задачи из `BACKLOG.md` или донастройка prod (cron, OCR keys).
 
-## 6. Следующий лучший шаг
+## 6. Resume Prompt
 
-**Выполнить деплой на Beget VPS** по `deploy/DEPLOY.md`: создать VPS, настроить env, systemd, nginx, cron, пройти smoke на `imcalc.*`.
-
-Альтернатива: закоммитить черновик деплоя и `APP_DATA_DIR`, затем деплой.
-
-## 7. Resume Prompt
-
-Полный блок для новой вкладки — в **`RESUME_PROMPT.md`**.
-
----
-
-## Open questions
-
-- Точный домен `imcalc.*` и пользователь systemd (`www-data` vs deploy-user).
-- Публичный GET ставок — отложено.
-- Автоматизация JSON — после стабильного ручного процесса на проде.
+→ **`RESUME_PROMPT.md`**

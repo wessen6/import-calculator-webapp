@@ -52,7 +52,9 @@ npm run lint
 npm run build
 ```
 
-**Production:** [deploy/DEPLOY.md](./deploy/DEPLOY.md) (VPS Beget, `imcalc.*`).
+**Production:** https://imcalc.wessen.online · [deploy/DEPLOY.md](./deploy/DEPLOY.md) (Beget VPS + Traefik)
+
+Обновление prod на VPS: `git push` → `update-imcalc.sh` (см. deploy).
 
 ## Структура (кратко)
 

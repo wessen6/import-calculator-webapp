@@ -65,7 +65,7 @@ npm run start
 ```
 
 - Mock-расчёты (`lib/mock-data.ts`) подмешиваются **только в `development`** (`lib/dev-fallback-calculations.ts`).
-- **Production:** VPS Beget, домен `imcalc.*` — см. [deploy/DEPLOY.md](./deploy/DEPLOY.md).
+- **Production:** https://imcalc.wessen.online — VPS Beget, systemd + Traefik (`/opt/beget/n8n`); см. [deploy/DEPLOY.md](./deploy/DEPLOY.md).
 - Персистентные ставки: `APP_DATA_DIR` (рекомендуется `/var/lib/imcalc/app-data`) или `.app-data` в cwd.
 - Seed: `data/rates.seed.json`, шаблон `data/rates.example.json`, автобэкап `.app-data/rates.backup.json`.
 

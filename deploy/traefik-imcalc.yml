@@ -1,0 +1,18 @@
+# /opt/beget/n8n/traefik_dynamic/imcalc.yml
+# Traefik file provider — маршрут на imcalc (Next.js на хосте :3000).
+# Замените imcalc.wessen.online на ваш поддомен.
+
+http:
+  routers:
+    imcalc:
+      rule: Host(`imcalc.wessen.online`)
+      entryPoints:
+        - websecure
+      tls:
+        certResolver: mytlschallenge
+      service: imcalc
+  services:
+    imcalc:
+      loadBalancer:
+        servers:
+          - url: http://172.17.0.1:3000

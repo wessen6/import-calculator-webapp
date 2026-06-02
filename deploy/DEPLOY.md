@@ -1,190 +1,250 @@
-# Деплой на VPS (Beget) — imcalc.*
+# Деплой на VPS (Beget)
 
-Черновик для production без Supabase: ставки в `rates.json`, история расчётов в браузере (`localStorage`).
+Production без Supabase: ставки в `rates.json` (`APP_DATA_DIR`), история расчётов в браузере (`localStorage`).
 
-**Домен:** `imcalc.example.com` (подставьте свой `imcalc.*`).  
+**Prod (факт):** https://imcalc.wessen.online  
 **Репозиторий:** https://github.com/wessen6/import-calculator-webapp
 
 ---
 
-## 1. Требования
+## Два сценария reverse proxy
 
-| Компонент | Версия |
-|-----------|--------|
-| OS | Ubuntu 22.04+ (VPS Beget) |
-| Node.js | 20 LTS или 22 LTS |
-| nginx | reverse proxy + TLS |
-| systemd | автозапуск приложения |
-
-Порты: приложение слушает **127.0.0.1:3000**, наружу только 443/80 через nginx.
+| Сценарий | Когда | Документ |
+|----------|-------|----------|
+| **A. Beget n8n + Traefik** | На VPS уже `/opt/beget/n8n`, порты 80/443 у Traefik | §A ниже (**рекомендуется**) |
+| **B. Отдельный nginx** | Чистый VPS без n8n | §B ниже, `nginx-imcalc.conf` |
 
 ---
 
-## 2. Каталоги на сервере
+## Общее: каталоги, env, systemd
+
+### Каталоги
 
 ```bash
-sudo mkdir -p /var/www/imcalc
-sudo mkdir -p /var/lib/imcalc/app-data
-sudo mkdir -p /var/backups/imcalc
-sudo chown -R "$USER:$USER" /var/www/imcalc /var/lib/imcalc /var/backups/imcalc
+mkdir -p /var/www/imcalc /var/lib/imcalc/app-data /var/backups/imcalc
 ```
 
 | Путь | Назначение |
 |------|------------|
 | `/var/www/imcalc/app` | git clone, `npm ci`, `.next` |
-| `/var/lib/imcalc/app-data` | **persistent** `rates.json`, `rates.backup.json` |
-| `/var/backups/imcalc` | ежедневные копии JSON (cron) |
+| `/var/lib/imcalc/app-data` | persistent `rates.json`, `rates.backup.json` |
+| `/var/backups/imcalc` | cron-бэкапы JSON |
 
-`APP_DATA_DIR=/var/lib/imcalc/app-data` — ставки переживают `git pull` и пересборку.
-
-При первом запуске, если `rates.json` нет, приложение скопирует seed из `data/rates.seed.json` или создаст defaults.
-
----
-
-## 3. Клонирование и сборка
+### Клон и сборка
 
 ```bash
 cd /var/www/imcalc
 git clone https://github.com/wessen6/import-calculator-webapp.git app
 cd app
 cp .env.example .env.local
-# отредактировать .env.local (см. §4)
+nano .env.local   # см. ниже
+chmod 600 .env.local
 npm ci
-npm run build
+NODE_OPTIONS=--max-old-space-size=2048 npm run build
 ```
 
-Проверка локально на сервере (до systemd):
-
-```bash
-NODE_ENV=production npm run start
-# curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:3000/calculations
-```
-
----
-
-## 4. Переменные окружения (`.env.local`)
-
-Обязательные для полного функционала:
-
-```env
-OWNER_ADMIN_PASSWORD=<сильный пароль для PUT /api/rates>
-OCR_SPACE_API_KEY=<ключ OCR.space>
-OPENROUTER_API_KEY=<ключ OpenRouter>
-OPENROUTER_MODEL=openai/gpt-4o-mini
-APP_DATA_DIR=/var/lib/imcalc/app-data
-```
-
-Опционально (пока не используется в UI):
+### `.env.local`
 
 ```env
 NEXT_PUBLIC_SUPABASE_URL=
 NEXT_PUBLIC_SUPABASE_ANON_KEY=
+OWNER_ADMIN_PASSWORD=<пароль для PUT /api/rates>
+OCR_SPACE_API_KEY=<ключ OCR.space, опционально на старте>
+OPENROUTER_API_KEY=<ключ OpenRouter, опционально на старте>
+OPENROUTER_MODEL=openai/gpt-4o-mini
+APP_DATA_DIR=/var/lib/imcalc/app-data
 ```
 
-**Не коммитить** `.env.local`. Права: `chmod 600 .env.local`.
+Supabase — пустые значения OK (в UI пока не используется).
 
----
-
-## 5. systemd
-
-Скопировать unit и включить сервис:
+### systemd
 
 ```bash
-sudo cp deploy/imcalc.service /etc/systemd/system/imcalc.service
-# при другом пользователе — поправить User= и пути в unit
-sudo systemctl daemon-reload
-sudo systemctl enable imcalc
-sudo systemctl start imcalc
-sudo systemctl status imcalc
+cp deploy/imcalc.service /etc/systemd/system/imcalc.service
+# User= под вашего пользователя на VPS (root или deploy)
+systemctl daemon-reload
+systemctl enable imcalc
+systemctl start imcalc
+systemctl status imcalc
+curl -I http://127.0.0.1:3000/calculations   # ожидается 200
 ```
+
+**Traefik (сценарий A):** imcalc слушает **`0.0.0.0:3000`** — иначе Traefik из Docker получит 502 на `172.17.0.1:3000`.  
+**nginx (сценарий B):** можно `127.0.0.1:3000`.
 
 Логи: `journalctl -u imcalc -f`
 
 ---
 
-## 6. nginx + TLS
+## A. Beget n8n + Traefik (фактический prod)
 
-```bash
-sudo cp deploy/nginx-imcalc.conf /etc/nginx/sites-available/imcalc
-sudo ln -sf /etc/nginx/sites-available/imcalc /etc/nginx/sites-enabled/imcalc
-# заменить imcalc.example.com на реальный домен в конфиге
-sudo nginx -t
-sudo systemctl reload nginx
+На том же VPS: n8n в `/opt/beget/n8n`, Traefik на 80/443. **nginx не ставить.**
+
+### DNS
+
+A-записи на IP VPS:
+
+| Имя | Назначение |
+|-----|------------|
+| `n8n` | n8n → `https://n8n.wessen.online` |
+| `imcalc` | imcalc → `https://imcalc.wessen.online` |
+
+### n8n на поддомен
+
+В `/opt/beget/n8n/.env`:
+
+```env
+N8N_HOST=n8n.wessen.online
+WEBHOOK_URL=https://n8n.wessen.online/
+N8N_EDITOR_BASE_URL=https://n8n.wessen.online/
 ```
 
-TLS (Let's Encrypt):
+В `docker-compose.yml` у сервиса `n8n` в labels Traefik:
+
+```yaml
+- traefik.http.routers.n8n.rule=Host(`n8n.wessen.online`)
+- traefik.http.middlewares.n8n.headers.SSLHost=n8n.wessen.online
+```
+
+### Traefik → imcalc
+
+**1.** Файл маршрута:
 
 ```bash
-sudo apt install certbot python3-certbot-nginx
-sudo certbot --nginx -d imcalc.example.com
+mkdir -p /opt/beget/n8n/traefik_dynamic
+cp /var/www/imcalc/app/deploy/traefik-imcalc.yml /opt/beget/n8n/traefik_dynamic/imcalc.yml
+# при другом домене — заменить imcalc.wessen.online в файле
 ```
+
+**2.** В `/opt/beget/n8n/docker-compose.yml` у сервиса **traefik**:
+
+`command:` — добавить:
+
+```yaml
+      - "--providers.file.directory=/etc/traefik/dynamic"
+      - "--providers.file.watch=true"
+```
+
+`volumes:` — добавить:
+
+```yaml
+      - ./traefik_dynamic:/etc/traefik/dynamic:ro
+```
+
+**3.** Перезапуск Traefik:
+
+```bash
+cd /opt/beget/n8n
+docker compose config   # проверка YAML
+docker compose up -d
+```
+
+**4.** Smoke:
+
+```bash
+curl -Ik https://imcalc.wessen.online/calculations   # HTTP/2 200
+```
+
+### 502 Bad Gateway
+
+Traefik не достучался до imcalc. Проверка из контейнera:
+
+```bash
+docker exec n8n-traefik-1 wget -q -S -O /dev/null http://172.17.0.1:3000/calculations 2>&1 | head -3
+```
+
+Фикс: в `imcalc.service` — `-H 0.0.0.0`, затем `systemctl restart imcalc`.  
+Если gateway не `172.17.0.1`:
+
+```bash
+docker exec n8n-traefik-1 ip route | awk '/default/ {print $3}'
+```
+
+Подставьте IP в `traefik_dynamic/imcalc.yml`.
+
+### Chrome «Опасный сайт»
+
+Google Safe Browsing — не ошибка сервера. Обход: «Сведения» → перейти. Долгосрочно: [Search Console](https://search.google.com/search-console) → запрос пересмотра.
 
 ---
 
-## 7. Бэкап ставок (cron)
+## B. Отдельный nginx (без Traefik)
 
 ```bash
-chmod +x deploy/backup-rates.sh
-sudo cp deploy/backup-rates.sh /usr/local/bin/imcalc-backup-rates.sh
-# при необходимости поправить APP_DATA_DIR и BACKUP_DIR в скрипте
+cp deploy/nginx-imcalc.conf /etc/nginx/sites-available/imcalc
+# server_name → ваш домен
+ln -sf /etc/nginx/sites-available/imcalc /etc/nginx/sites-enabled/imcalc
+nginx -t && systemctl reload nginx
+certbot --nginx -d imcalc.example.com
 ```
 
-Crontab (ежедневно в 03:15):
-
-```cron
-15 3 * * * /usr/local/bin/imcalc-backup-rates.sh >> /var/log/imcalc-backup.log 2>&1
-```
-
-Дополнительно: периодический JSON export через UI `/settings/rates` → «Скачать JSON».
+В `imcalc.service` можно `-H 127.0.0.1`.
 
 ---
 
-## 8. Обновление (release)
+## Обновление prod (после git push)
+
+На **ПК:** commit → `git push origin main`
+
+На **VPS:**
+
+```bash
+update-imcalc.sh
+```
+
+или вручную:
 
 ```bash
 cd /var/www/imcalc/app
 git pull origin main
 npm ci
-npm run build
-sudo systemctl restart imcalc
+NODE_OPTIONS=--max-old-space-size=2048 npm run build
+systemctl restart imcalc
 ```
 
-`.app-data` / `APP_DATA_DIR` **не трогаются** при обновлении.
+Установка скрипта один раз:
+
+```bash
+cp /var/www/imcalc/app/deploy/update-imcalc.sh /usr/local/bin/update-imcalc.sh
+chmod +x /usr/local/bin/update-imcalc.sh
+```
+
+`APP_DATA_DIR` и `.env.local` при `git pull` **не меняются**.
 
 ---
 
-## 9. Smoke-тест после деплоя
+## Бэкап ставок (cron)
+
+```bash
+cp deploy/backup-rates.sh /usr/local/bin/imcalc-backup-rates.sh
+chmod +x /usr/local/bin/imcalc-backup-rates.sh
+crontab -e
+```
+
+```cron
+15 3 * * * /usr/local/bin/imcalc-backup-rates.sh >> /var/log/imcalc-backup.log 2>&1
+```
+
+---
+
+## Smoke-тест
 
 | URL | Ожидание |
 |-----|----------|
-| `https://imcalc.*/calculations` | 200, список (пустой или с данными из localStorage) |
-| `https://imcalc.*/calculations/new` | 200, форма |
-| `https://imcalc.*/settings/rates` | 200, ставки с сервера |
-| `https://imcalc.*/api/rates` | 200, JSON (публичный GET в MVP) |
-
-PUT `/api/rates` — только с header `x-owner-password`.
+| `/calculations` | 200 |
+| `/calculations/new` | 200 |
+| `/settings/rates` | 200 |
+| `/api/rates` | 200, JSON |
 
 ---
 
-## 10. Риски и ограничения MVP
+## Чеклист первого деплоя (Traefik)
 
-- История расчётов только в браузере пользователя.
-- Потеря `/var/lib/imcalc/app-data` без бэкапа = потеря ставок.
-- OCR/OpenRouter — внешние лимиты; при 502 повторить запрос.
-- `GET /api/rates` публичный — закрыть позже (см. `BACKLOG.md`).
-
----
-
-## 11. Чеклист первого деплоя
-
-- [ ] VPS создан, SSH доступ
-- [ ] Node 20+, nginx, certbot
-- [ ] Каталоги §2
-- [ ] `.env.local` с секретами и `APP_DATA_DIR`
-- [ ] `npm run build` успешен
-- [ ] systemd `imcalc` active
-- [ ] DNS `imcalc.*` → IP VPS
-- [ ] HTTPS работает
-- [ ] Smoke §9
-- [ ] Cron бэкапа
-- [ ] Seed/ставки проверены на `/settings/rates`
+- [x] VPS Beget, n8n в `/opt/beget/n8n`
+- [x] DNS `imcalc`, `n8n` → IP VPS
+- [x] Node 20+, `/var/www/imcalc/app`, `.env.local`, `APP_DATA_DIR`
+- [x] `npm run build`, systemd `imcalc` active
+- [x] `traefik_dynamic/imcalc.yml`, file provider в traefik
+- [x] `https://imcalc.wessen.online/calculations` — 200
+- [ ] cron бэкапа ставок
+- [ ] OCR/OpenRouter ключи (по необходимости)

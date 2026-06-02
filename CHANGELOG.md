@@ -6,6 +6,22 @@
 
 ---
 
+## 2026-06-02 (prod Beget + Traefik)
+
+### Добавлено
+
+- Prod: https://imcalc.wessen.online (VPS Beget, systemd + Traefik из `/opt/beget/n8n`).
+- `deploy/traefik-imcalc.yml`, `deploy/update-imcalc.sh`.
+- Документация: сценарий Traefik (§A) и nginx (§B) в `deploy/DEPLOY.md`.
+
+### Изменено
+
+- `deploy/imcalc.service` — `-H 0.0.0.0` для доступа Traefik из Docker (502 fix).
+- `deploy/DEPLOY.md` — фактический prod, n8n на `n8n.wessen.online`, обновление через `update-imcalc.sh`.
+- `README.md`, `BACKLOG.md`, `SESSION_SUMMARY.md`, `RESUME_PROMPT.md`, `PROJECT.md`.
+
+---
+
 ## 2026-06-02 (деплой VPS — черновик)
 
 ### Добавлено
