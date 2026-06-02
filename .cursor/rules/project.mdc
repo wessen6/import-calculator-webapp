@@ -1,0 +1,15 @@
+---
+description: Минимальные правила для import-calculator-webapp
+alwaysApply: true
+---
+
+# Import Calculator — правила проекта
+
+- Для нетривиальных задач сначала короткий план (5–10 шагов), затем изменения.
+- Перед правками искать существующие паттерны в `components/`, `lib/`, `app/api/`.
+- Не ломать архитектуру без явной причины: расчёты в `localStorage`, ставки в `.app-data` + `/api/rates`, n8n — reference-only.
+- После изменений предлагать проверку: `npm run typecheck`, `npm run lint`, `npm run build`, ключевые маршруты UI.
+- Новые файлы — в стиле проекта: PascalCase компоненты, kebab/camel в `lib/`, Route Handlers в `app/api/*/route.ts`.
+- Баги: сначала локализовать причину, потом минимальный фикс.
+- При заметных изменениях обновлять `PROJECT.md` и `CHANGELOG.md`.
+- Секреты только в `.env.local`; не коммитить `.env`, `.env*.local`, `.app-data`.

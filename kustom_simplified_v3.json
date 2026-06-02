@@ -1,0 +1,2456 @@
+{
+  "name": "кустом simplified",
+  "nodes": [
+    {
+      "parameters": {
+        "updates": [
+          "message",
+          "callback_query"
+        ],
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegramTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        1088
+      ],
+      "id": "c22eb4de-1171-4381-bb46-db91e35e2a40",
+      "name": "Telegram Trigger",
+      "webhookId": "17e2719d-4123-47de-bc1f-53a84014f318",
+      "credentials": {
+        "telegramApi": {
+          "id": "eoIFpo09nPKdyjHZ",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "file",
+        "fileId": "={{ $json.message?.document?.file_id || ($json.message?.photo?.length ? $json.message.photo[$json.message.photo.length - 1].file_id : '') }}",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        2016,
+        352
+      ],
+      "id": "76cef1ac-0922-4f69-b239-fbd1de711a6f",
+      "name": "Get a file",
+      "webhookId": "7680b93c-34c6-4907-8f5d-adedaa880988",
+      "credentials": {
+        "telegramApi": {
+          "id": "eoIFpo09nPKdyjHZ",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.ocr.space/parse/image",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "K85428185088957"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "multipart-form-data",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "parameterType": "formBinaryData",
+              "name": "file",
+              "inputDataFieldName": "data"
+            },
+            {
+              "name": "language",
+              "value": "rus"
+            },
+            {
+              "name": "isOverlayRequired",
+              "value": "false"
+            },
+            {
+              "name": "OCREngine",
+              "value": "2"
+            },
+            {
+              "name": "filetype",
+              "value": "={{ $('Telegram Trigger').item.json.message?.document?.mime_type === 'application/pdf' ? 'PDF' : 'AUTO' }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        2240,
+        352
+      ],
+      "id": "d058dc41-d152-4719-a69d-86d64e5ad4e3",
+      "name": "OCR"
+    },
+    {
+      "parameters": {
+        "jsCode": "const text = items[0].json?.ParsedResults?.[0]?.ParsedText || '';\nconst cleaned = text\n  .split('\\n')\n  .map(l => l.trim())\n  .filter(l => l.length > 1)\n  .join('\\n');\n\nreturn [\n  {\n    json: {\n      ...items[0].json,\n      extracted_image_text: cleaned\n    }\n  }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2464,
+        352
+      ],
+      "id": "b977cd56-8c80-441d-b002-6068ba05d242",
+      "name": "Очистка OCR"
+    },
+    {
+      "parameters": {
+        "url": "https://www.cbr-xml-daily.ru/daily_json.js",
+        "options": {}
+      },
+      "id": "e1ca0adb-a587-4d6b-acc7-945641c49b62",
+      "name": "Курс ЦБ",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        3136,
+        544
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "7f7a0190-dc49-471d-838c-49ef40ef9256",
+              "name": "rate_date",
+              "value": "={{ JSON.parse($json.data).Date }}",
+              "type": "string"
+            },
+            {
+              "id": "c5d73c2f-1343-4e70-8e23-960747b30b96",
+              "name": "eur_rate",
+              "value": "={{ JSON.parse($json.data).Valute.EUR.Value }}",
+              "type": "number"
+            },
+            {
+              "id": "6fa12e8a-ce1f-4804-8ded-ab517fd12269",
+              "name": "usd_rate",
+              "value": "={{ JSON.parse($json.data).Valute.USD.Value }}",
+              "type": "number"
+            },
+            {
+              "id": "79ba7b4e-3c9d-4cd3-8530-61c3251f013e",
+              "name": "cny_rate",
+              "value": "={{ JSON.parse($json.data).Valute.CNY.Value }}",
+              "type": "number"
+            },
+            {
+              "id": "538a5fe3-027a-4bc5-b3e4-64bab9a75ce3",
+              "name": "user_message",
+              "value": "={{ $('Telegram Trigger').item.json.message?.text || $('Telegram Trigger').item.json.message?.caption || '' }}",
+              "type": "string"
+            },
+            {
+              "id": "502dfc45-aa5e-4518-9f9a-41b49698cf2f",
+              "name": "chat_id",
+              "value": "={{ $('Telegram Trigger').item.json.message?.chat?.id || $('Telegram Trigger').item.json.callback_query?.message?.chat?.id || $json.chat_id || 0 }}",
+              "type": "number"
+            },
+            {
+              "id": "88873834-ddc4-48ac-882a-d120aceb3db6",
+              "name": "extracted_image_text",
+              "value": "={{ $('Merge Paths').item.json.extracted_image_text || '' }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        3360,
+        544
+      ],
+      "id": "cdb74e1c-d0e5-4a30-9ec5-3d19a981fbbf",
+      "name": "Edit Fields1",
+      "alwaysOutputData": false
+    },
+    {
+      "parameters": {
+        "jsCode": "const item = $input.first().json;\nconst userMessage = String(item.user_message || '').trim();\nconst ocrText = String(item.extracted_image_text || '').trim();\n\nconst sourceText = [userMessage, ocrText]\n  .filter(Boolean)\n  .join(' ')\n  .replace(/\\u200B/g, ' ')\n  .replace(/\\s+/g, ' ')\n  .trim();\n\nfunction parseNumber(str) {\n  if (!str) return null;\n  let s = String(str).trim().replace(/\\s/g, '');\n  if (/^\\d{1,3}(?:,\\d{3})+$/.test(s)) {\n    const num = Number(s.replace(/,/g, ''));\n    return Number.isFinite(num) ? num : null;\n  }\n  const num = Number(\n    s\n      .replace(/,/g, '.')\n      .replace(/[^0-9.]/g, '')\n  );\n  return Number.isFinite(num) ? num : null;\n}\n\nfunction normalizeCurrency(raw) {\n  if (!raw) return null;\n  const v = String(raw).toUpperCase().trim().split('/')[0];\n\n  if (v === 'CN' || v === 'RMB' || v === 'ЮАНЬ' || v === 'ЮАНИ' || v.includes('ЮАН')) return 'CNY';\n  if (v === '$' || v === 'ДОЛЛАР' || v === 'ДОЛЛ' || v.includes('ДОЛЛ')) return 'USD';\n  if (v === '€' || v === 'ЕВРО' || v.includes('ЕВРО')) return 'EUR';\n  if (v === '₽' || v === 'РУБ' || v.includes('РУБ')) return 'RUB';\n  if (v === '¥') return 'CNY';\n\n  if (['CNY', 'USD', 'EUR', 'RUB'].includes(v)) return v;\n  return null;\n}\n\nfunction parseEuropeanQtyToken(tok) {\n  const s = String(tok).trim();\n  if (/^\\d{1,3}(?:\\.\\d{3})+$/.test(s)) return parseNumber(s.replace(/\\./g, ''));\n  return parseNumber(s);\n}\n\nfunction parseEuropeanPriceToken(tok) {\n  return parseNumber(String(tok).replace(',', '.'));\n}\n\nfunction tryParseProformaInvoice(text) {\n  if (!/PROFORMA|P\\.INVOICE|QTY\\s*\\/\\s*PCS|ITEM\\s*\\/\\s*PRODUCT|CRATE\\s+KSK-/i.test(text)) return null;\n\n  const rows = [];\n  const rowRe = /(\\d{1,3}(?:\\.\\d{3})+|\\d{2,5})\\s+(\\d+[.,]\\d+)\\s*\\$/gi;\n  let rm;\n  while ((rm = rowRe.exec(text)) !== null) {\n    const qty = parseEuropeanQtyToken(rm[1]);\n    const price = parseEuropeanPriceToken(rm[2]);\n    if (qty && qty >= 1 && qty < 500000 && price && price > 0 && price < 1e6) {\n      rows.push({ qty, price });\n    }\n  }\n  if (!rows.length) return null;\n\n  const quantity = rows.reduce((s, r) => s + r.qty, 0);\n  const prices = [...new Set(rows.map((r) => r.price))];\n  const unit_price = prices.length === 1 ? prices[0] : rows[0].price;\n\n  const crates = [...text.matchAll(/CRATE\\s+KSK-\\d{3,4}\\s+(?:BLUE|RED|GREEN)?/gi)].map((m) => m[0].trim());\n  let product_name = null;\n  if (crates.length === 1) {\n    product_name = crates[0];\n  } else if (crates.length > 1) {\n    const base = crates[0].replace(/\\s+(BLUE|RED|GREEN)$/i, '').trim();\n    const colors = crates.map((c) => (c.match(/(BLUE|RED|GREEN)/i) || [])[0]).filter(Boolean);\n    product_name = colors.length ? `${base} (${[...new Set(colors)].join(', ')})` : base;\n  } else {\n    product_name = 'Партия по инвойсу';\n  }\n\n  const currency = /\\$|USD/i.test(text) ? 'USD' : null;\n  return { product_name, quantity, unit_price, currency, parsed_from_invoice: true };\n}\n\nlet quantity = null;\nlet unitPrice = null;\nlet currency = null;\nlet productName = null;\nlet exchangeRate = null;\n\nlet quantityMatch = null;\nlet priceMatch = null;\nlet ocrQtyMatch = null;\nlet priceAreaMatch = null;\n\nconst invoiceData = tryParseProformaInvoice(sourceText);\nif (invoiceData) {\n  quantity = invoiceData.quantity;\n  unitPrice = invoiceData.unit_price;\n  productName = invoiceData.product_name;\n  currency = invoiceData.currency ? normalizeCurrency(invoiceData.currency) : normalizeCurrency('$');\n}\n\nif (!invoiceData) {\nconst QTY_UNIT_RX = '(?:pieces|pcs|шт|паллет(?:а|ы|ов)?|короб(?:а|ов)?|упак(?:овок)?)';\nconst CURR_WORD_RX = '(?:cny|rmb|usd|eur|rub|cn|евро|руб(?:лей|ля)?|доллар(?:ов|а|ы)?|долл\\.?|юан(?:ей|я)?|юань)';\nconst CURR_SYM_RX = '(?:\\\\$|€|₽|¥)';\nconst CURRENCY_RX = `(?:${CURR_WORD_RX}|${CURR_SYM_RX})(?:\\\\/\\\\w+)?`;\n\n// «15 паллет, 1000 долларов»\nconst qtyPricePairMatch = sourceText.match(\n  new RegExp(`(?:^|[\\\\s,])(\\\\d+(?:[.,]\\\\d+)?)\\\\s*${QTY_UNIT_RX}\\\\s*[,;]\\\\s*(\\\\d+(?:[.,]\\\\d+)?)\\\\s*(${CURRENCY_RX})`, 'i')\n);\nif (qtyPricePairMatch) {\n  quantity = parseNumber(qtyPricePairMatch[1]);\n  unitPrice = parseNumber(qtyPricePairMatch[2]);\n  currency = normalizeCurrency(qtyPricePairMatch[3]);\n  quantityMatch = qtyPricePairMatch;\n  priceMatch = qtyPricePairMatch;\n}\n\n// =========================\n// 1) Количество\n// =========================\n\n// OCR-паттерн: \"Количество 1 200\"\nif (!quantity) {\n  ocrQtyMatch = sourceText.match(/Количество\\s+(\\d{1,3}(?:\\s\\d{3})*)\\b/i);\n  if (ocrQtyMatch) {\n    const v = parseNumber(ocrQtyMatch[1]);\n    if (Number.isFinite(v)) quantity = v;\n  }\n}\n\n// Обычный паттерн: \"11 660 шт\", \"15 паллет\"\nif (!quantity) {\n  quantityMatch = sourceText.match(\n    new RegExp(`(?:^|[\\\\s,-])(\\\\d{1,3}(?:,\\\\d{3})+|\\\\d{1,3}(?:\\\\s\\\\d{3})+|\\\\d+)\\\\s*${QTY_UNIT_RX}\\\\b`, 'i')\n  );\n\n  if (quantityMatch) {\n    quantity = parseNumber(quantityMatch[1]);\n  }\n}\n\n// =========================\n// 2) Цена и валюта\n// =========================\n\n// OCR-паттерн: после слова \"Цена\" первая цена с валютой\nif (!unitPrice) {\n  priceAreaMatch = sourceText.match(\n    new RegExp(`Цена[^0-9]{0,50}([\\\\d.,]+\\\\s*${CURRENCY_RX})`, 'i')\n  );\n\n  if (priceAreaMatch) {\n    const raw = priceAreaMatch[1];\n    const numMatch = raw.match(/[\\d.,]+/);\n    const currMatch = raw.match(new RegExp(`(${CURRENCY_RX})`, 'i'));\n\n    if (numMatch) {\n      const v = parseNumber(numMatch[0]);\n      if (Number.isFinite(v)) unitPrice = v;\n    }\n\n    if (currMatch) {\n      currency = normalizeCurrency(currMatch[1]);\n    }\n  }\n}\n\n// Обычный паттерн цены: \"1000 долларов\" (склонения валют без \\\\b)\nif (!unitPrice) {\n  priceMatch = sourceText.match(\n    new RegExp(`(\\\\d+(?:[.,]\\\\d+)?)\\\\s*(${CURRENCY_RX})`, 'i')\n  );\n\n  if (priceMatch) {\n    unitPrice = parseNumber(priceMatch[1]);\n    currency = normalizeCurrency(priceMatch[2]);\n  }\n}\n\n// Фоллбек валюты\nif (!currency) {\n  if (/RMB|CNY|\\bCN\\b|ЮАНЬ|ЮАНИ|ЮАН/i.test(sourceText)) currency = 'CNY';\n  else if (/USD|\\$|ДОЛЛАР|ДОЛЛ/i.test(sourceText)) currency = 'USD';\n  else if (/EUR|€|ЕВРО/i.test(sourceText)) currency = 'EUR';\n  else if (/RUB|₽|РУБ/i.test(sourceText)) currency = 'RUB';\n}\n\n// Фоллбек количества: не путать с ценой\nif (!quantity) {\n  if (unitPrice != null) {\n    const otherNums = [...sourceText.matchAll(/(?:^|[\\s,])(\\d+(?:[.,]\\d+)?)/g)]\n      .map((m) => parseNumber(m[1]))\n      .filter((n) => Number.isFinite(n) && n !== unitPrice);\n    if (otherNums.length > 0) quantity = otherNums[0];\n  } else {\n    const allNums = [...sourceText.matchAll(/\\d{1,3}(?:\\s\\d{3})+|\\d{4,}/g)]\n      .map((m) => m[0])\n      .map((v) => ({ raw: v, num: parseNumber(v) }))\n      .filter((v) => Number.isFinite(v.num));\n\n    if (allNums.length > 0) quantity = allNums[0].num;\n  }\n}\n}\n\nif (!productName) {\n// =========================\n// 3) product_name (черновой)\n// =========================\n\nlet prodText = sourceText;\n\n// Убираем количество из OCR-блока\nif (ocrQtyMatch) {\n  prodText = prodText.replace(ocrQtyMatch[0], ' ');\n}\n\n// Убираем количество из обычного паттерна\nif (quantityMatch) {\n  prodText = prodText.replace(quantityMatch[0], ' ');\n}\n\n// Если количество нашли только фоллбеком — пробуем убрать его как число\nif (!quantityMatch && !ocrQtyMatch && quantity) {\n  const quantityVariants = [\n    String(quantity),\n    String(quantity).replace(/\\B(?=(\\d{3})+(?!\\d))/g, ' '),\n  ];\n\n  for (const q of quantityVariants) {\n    if (q) prodText = prodText.replace(q, ' ');\n  }\n}\n\n// Убираем OCR-блок цены\nif (priceAreaMatch) {\n  prodText = prodText.replace(priceAreaMatch[0], ' ');\n}\n\n// Убираем обычный паттерн цены\nif (priceMatch) {\n  prodText = prodText.replace(priceMatch[0], ' ');\n}\n\n// Убираем валютные слова\nprodText = prodText.replace(/\\b(cny|rmb|usd|eur|rub|cn|евро|руб(?:лей|ля)?|доллар(?:ов|а|ы)?|долл\\.?|юан(?:ей|я)?|юань)(?:\\/\\w+)?\\b/gi, ' ');\nprodText = prodText.replace(/\\b(fob|sheet|sheets|pieces|pcs|паллет(?:а|ы|ов)?|короб(?:а|ов)?)\\b/gi, ' ');\nprodText = prodText.replace(/[€₽¥$]/g, ' ');\n\n// Убираем sheet / sheets\nprodText = prodText.replace(/\\bsheets?\\b/gi, ' ');\n\n// Нормализация\nprodText = prodText\n  .replace(/[|;]+/g, ' ')\n  .replace(/\\s*,\\s*/g, ' ')\n  .replace(/\\s*\\/\\s*/g, ' ')\n  .replace(/\\s+/g, ' ')\n  .trim();\n\n// =========================\n// 3.1) product_name: обрезаем справа по маркерам\n// =========================\n\nconst cutMarkers = [\n  'Наружные размеры',\n  'Внутренние размеры',\n  'Полезная внутренняя высота',\n  'Конструкция боковой части',\n  'Конструкция основания',\n  'Ручки торцевая сторона',\n  'Ручки продольная сторона',\n  'Объем',\n  'Объём',\n  'Вес',\n  'Материал',\n  'Производственная информация',\n  'Цвет:',\n  'Ожидаемая готовность',\n  'изображения похожи',\n  'Количество',\n  'Цена за',\n];\n\nlet baseName = prodText;\nfor (const marker of cutMarkers) {\n  const idx = baseName.toLowerCase().indexOf(marker.toLowerCase());\n  if (idx > 0) {\n    baseName = baseName.slice(0, idx).trim();\n    break;\n  }\n}\n\n// =========================\n// 3.2) product_name: обрезаем слева до \"товарного\" слова\n// =========================\n\nconst startMarkers = [\n  'Евроконтейнеры',\n  'Контейнер',\n  'Евро контейнер',\n  'Короб',\n  'Box',\n];\n\nlet finalName = baseName;\nfor (const marker of startMarkers) {\n  const idx = finalName.toLowerCase().indexOf(marker.toLowerCase());\n  if (idx >= 0) {\n    finalName = finalName.slice(idx).trim();\n    break;\n  }\n}\n\n// Если после обрезки пусто — откатываемся к baseName / prodText\nif (!finalName) finalName = baseName || prodText;\n\n// Финальная чистка пробелов\nproductName = finalName.replace(/\\s+/g, ' ').trim() || null;\n}\n\nif (!productName && quantity && unitPrice && currency) {\n  productName = 'Товар (уточнить)';\n}\n\n// =========================\n// 4) Курсы\n// =========================\n\nconst rates = {\n  CNY: item.cny_rate,\n  USD: item.usd_rate,\n  EUR: item.eur_rate,\n  RUB: 1,\n};\n\nexchangeRate = currency ? (rates[currency] || null) : null;\n\n// =========================\n// 5) Проверка обязательных полей\n// =========================\n\nconst missing = [];\nif (!productName) missing.push('product_name');\nif (!quantity) missing.push('quantity');\nif (!unitPrice) missing.push('unit_price');\nif (!currency) missing.push('currency');\n\nreturn [\n  {\n    json: {\n      ...item,\n      source_text: sourceText,\n      parsed_product_name: productName,\n      parsed_quantity: quantity,\n      parsed_unit_price: unitPrice,\n      parsed_currency: currency,\n      parsed_exchange_rate: exchangeRate,\n      parsed_calc_date: item.rate_date,\n      missing_fields: missing,\n      parse_ready: missing.length === 0,\n    },\n  },\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3584,
+        544
+      ],
+      "id": "6cbc370d-6a2b-44c5-8a04-29b9f13c0edd",
+      "name": "Parse User Input"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "parse-ready-check",
+              "leftValue": "={{ $json.parse_ready === true }}",
+              "rightValue": "=true",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "d88522e6-6cf4-464b-842c-584eaff32878",
+      "name": "Check Parse Ready",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        3808,
+        544
+      ]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.source_text }}",
+        "messages": {
+          "messageValues": [
+            {
+              "message": "Извлеки из текста данные о товаре. Верни ТОЛЬКО JSON без markdown:\n{\"product_name\": \"строка или null\", \"quantity\": число или null, \"unit_price\": число или null, \"currency\": \"CNY/USD/EUR/RUB или null\"}\nПравила: RMB и ¥ → CNY, $ → USD, € → EUR, ₽ → RUB. Количество и цена — только числа."
+            }
+          ]
+        },
+        "batching": {}
+      },
+      "id": "3dd12cfa-fd54-4d76-b358-55162393dc09",
+      "name": "LLM Fallback Parser",
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.9,
+      "position": [
+        4032,
+        320
+      ]
+    },
+    {
+      "parameters": {
+        "model": "openrouter/free",
+        "options": {}
+      },
+      "id": "77952f60-f4f5-4bb6-951c-29fd188475bd",
+      "name": "OpenRouter LLM Model",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenRouter",
+      "typeVersion": 1,
+      "position": [
+        4144,
+        608
+      ],
+      "credentials": {
+        "openRouterApi": {
+          "id": "7aa4UnBEeCFiuHh3",
+          "name": "OpenRouter account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const original = $('Parse User Input').first().json;\nconst llmRaw = $input.first().json.text || $input.first().json.output || '';\nlet llm = {};\ntry { llm = typeof llmRaw === 'string' ? JSON.parse(llmRaw) : llmRaw; } catch(e) {}\n\nreturn [{\njson: {\n...original,\nparsed_product_name: original.parsed_product_name || llm.product_name || null,\nparsed_quantity: original.parsed_quantity || llm.quantity || null,\nparsed_unit_price: original.parsed_unit_price || llm.unit_price || null,\nparsed_currency: original.parsed_currency || llm.currency || null,\nparse_ready: !!(\n(original.parsed_product_name || llm.product_name) &&\n(original.parsed_quantity || llm.quantity) &&\n(original.parsed_unit_price || llm.unit_price) &&\n(original.parsed_currency || llm.currency)\n),\nllm_used: true\n}\n}];"
+      },
+      "id": "90baee18-8b58-413d-a902-ae7297c0cea1",
+      "name": "Merge LLM Result",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        4384,
+        320
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const item = $input.first().json;\n\nconst product_name = item.parsed_product_name || null;\nconst quantity = item.parsed_quantity || null;\nconst unit_price = item.parsed_unit_price || null;\nconst currency = item.parsed_currency || null;\nconst exchange_rate = item.parsed_exchange_rate || null;\nconst calc_date = item.parsed_calc_date || item.rate_date || null;\n\nconst missing = [];\nif (!product_name) missing.push('product_name');\nif (!quantity) missing.push('quantity');\nif (!unit_price) missing.push('unit_price');\nif (!currency) missing.push('currency');\n\nlet status = 'need_more_data';\nlet message = 'Проверьте информацию о партии и уточните недостающие данные.';\n\nif (missing.length === 0) {\n  status = 'need_confirmation';\n  message = null;\n}\n\nconst output_parsed = {\n  product_name,\n  quantity,\n  unit_price,\n  currency,\n  exchange_rate,\n  calc_date,\n  status,\n  message,\n};\n\nreturn [{\n  json: {\n    ...item,\n    product_name,\n    quantity,\n    unit_price,\n    currency,\n    exchange_rate,\n    calc_date,\n    status,\n    message,\n    output_parsed,\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        4608,
+        544
+      ],
+      "id": "d7a88a77-0200-4dcf-ba85-46a5c4459e62",
+      "name": "Build Confirmation State"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.output_parsed.status }}",
+                    "rightValue": "need_confirmation",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "47a82231-a07a-473b-b358-ccbeafc97ebe"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "need_confirmation"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.output_parsed.status }}",
+                    "rightValue": "need_more_data",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "need_more_data"
+            }
+          ]
+        },
+        "options": {
+          "fallbackOutput": "extra"
+        }
+      },
+      "id": "03056fcf-6e51-429e-a654-e5023fdc267a",
+      "name": "Route by Status",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.4,
+      "position": [
+        5056,
+        672
+      ]
+    },
+    {
+      "parameters": {
+        "chatId": "={{ Number($json.chat_id || $json.message?.chat?.id || $json.callback_query?.message?.chat?.id || $('Telegram Trigger').first().json.message?.chat?.id || $('Telegram Trigger').first().json.callback_query?.message?.chat?.id || 0) }}",
+        "text": "=Подтвердите данные для расчета:\n\nТовар: {{ $json.output_parsed?.product_name || '' }}\nКол-во: {{ $json.output_parsed?.quantity || '' }} шт\nЦена: {{ $json.output_parsed?.unit_price || '' }} {{ $json.output_parsed?.currency || '' }}\nКурс ЦБ: {{ $json.output_parsed?.exchange_rate || '' }}\n\nНажмите кнопку ниже:",
+        "replyMarkup": "inlineKeyboard",
+        "inlineKeyboard": {
+          "rows": [
+            {
+              "row": {
+                "buttons": [
+                  {
+                    "text": "✅ Подтвердить",
+                    "additionalFields": {
+                      "callback_data": "confirm"
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "row": {
+                "buttons": [
+                  {
+                    "text": "✏️ Кол-во",
+                    "additionalFields": {
+                      "callback_data": "edit_quantity"
+                    }
+                  },
+                  {
+                    "text": "✏️ Цена",
+                    "additionalFields": {
+                      "callback_data": "edit_price"
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "row": {
+                "buttons": [
+                  {
+                    "text": "✏️ Валюта",
+                    "additionalFields": {
+                      "callback_data": "edit_currency"
+                    }
+                  },
+                  {
+                    "text": "✏️ Товар",
+                    "additionalFields": {
+                      "callback_data": "edit_product"
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "row": {
+                "buttons": [
+                  {
+                    "text": "🔄 Сбросить",
+                    "additionalFields": {
+                      "callback_data": "reset"
+                    }
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        "additionalFields": {
+          "parse_mode": "HTML"
+        }
+      },
+      "id": "4dc9704a-4bfa-4bb1-ab00-8fad9259d24a",
+      "name": "Send Confirmation",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        5280,
+        512
+      ],
+      "webhookId": "52873a34-8d03-4cdc-92e5-7b4d517d0bcd",
+      "credentials": {
+        "telegramApi": {
+          "id": "eoIFpo09nPKdyjHZ",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{ Number($json.chat_id || $json.message?.chat?.id || $json.callback_query?.message?.chat?.id || $('Telegram Trigger').first().json.message?.chat?.id || $('Telegram Trigger').first().json.callback_query?.message?.chat?.id || 0) }}",
+        "text": "={{ ($json.message || 'Не хватает данных для расчета.') + '\\n\\nПришлите одним сообщением: товар, количество, цену и валюту.' }}",
+        "additionalFields": {
+          "parse_mode": "HTML"
+        }
+      },
+      "id": "d85487fe-8ab5-4e4b-9d49-893c0fbd39d3",
+      "name": "Send More Data Request",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        5280,
+        896
+      ],
+      "webhookId": "e1285c35-82c0-4fe6-85c5-16cd9e3a31e9",
+      "credentials": {
+        "telegramApi": {
+          "id": "eoIFpo09nPKdyjHZ",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "940ae74d-8912-41eb-989f-b53aecc777ff",
+              "name": "request_id",
+              "value": "={{ 'RQ-' + $now.format('ddMMyyyy-HHmmss') + '-' + String(Math.floor(Math.random() * 10000)).padStart(4, '0') }}",
+              "type": "string"
+            },
+            {
+              "id": "ae927cc2-2797-4608-8429-5d6a1ba01e0e",
+              "name": "calc_date",
+              "value": "={{ $now.toFormat('dd.MM.yyyy') }}",
+              "type": "string"
+            },
+            {
+              "id": "9583b2c3-d640-4d24-b8fa-e0d916c1c476",
+              "name": "product_name",
+              "value": "={{ $json.output_parsed?.product_name || $json.saved_draft?.product_name || $json.product_name || '' }}",
+              "type": "string"
+            },
+            {
+              "id": "f20f028c-4f8c-449d-aeb1-aee6205a2ca1",
+              "name": "currency",
+              "value": "={{ $json.output_parsed?.currency || $json.saved_draft?.currency || $json.currency || '' }}",
+              "type": "string"
+            },
+            {
+              "id": "aca8512e-c764-479d-a7d5-456fbb055933",
+              "name": "cbr_rate",
+              "value": "={{ String($json.output_parsed?.exchange_rate || $json.saved_draft?.exchange_rate || $json.exchange_rate || '').replace('.', ',') }}",
+              "type": "string"
+            },
+            {
+              "id": "9bdb565d-9d63-4dfc-9546-c5f575144a31",
+              "name": "qty",
+              "value": "={{ $json.output_parsed?.quantity || $json.saved_draft?.quantity || $json.quantity || '' }}",
+              "type": "string"
+            },
+            {
+              "id": "9e782a02-9c73-4638-8f40-d78e3f1873b7",
+              "name": "unit_price_foreign",
+              "value": "={{ String($json.output_parsed?.unit_price || $json.saved_draft?.unit_price || $json.unit_price || '').replace('.', ',') }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        5280,
+        704
+      ],
+      "id": "4f327e92-4e96-49f5-98a0-833c7a65019f",
+      "name": "Prepare Calculator Row"
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "19c99Qdhpg6Gl9BepmPdISklDJkdV8HEdVRSjw2CaUHE",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "=n8n_input",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "request_id": "={{ $json.request_id }}",
+            "calc_date": "={{ $json.calc_date }}",
+            "product_name": "={{ $json.product_name }}",
+            "currency": "={{ $json.currency }}",
+            "cbr_rate": "={{ $json.cbr_rate }}",
+            "qty": "={{ $json.qty }}",
+            "unit_price_foreign": "={{ $json.unit_price_foreign }}"
+          },
+          "matchingColumns": [
+            "A"
+          ],
+          "schema": [
+            {
+              "id": "request_id",
+              "displayName": "request_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "calc_date",
+              "displayName": "calc_date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "product_name",
+              "displayName": "product_name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "currency",
+              "displayName": "currency",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "cbr_rate",
+              "displayName": "cbr_rate",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "qty",
+              "displayName": "qty",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "unit_price_foreign",
+              "displayName": "unit_price_foreign",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "status",
+              "displayName": "status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "7ec79748-f692-4685-9f9a-0c6d8a372dcf",
+      "name": "Write Data to Calculator",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        5504,
+        704
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "zrQMQIYHWBU5P6J3",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "amount": 0.5
+      },
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        5728,
+        704
+      ],
+      "id": "717a2157-1245-402e-9160-13af7b080d08",
+      "name": "Wait",
+      "webhookId": "ee5a956c-2980-460a-8739-db4b28b0e1c8"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "ec87bafc-7624-4f5c-a4da-238fc2adb4bf",
+              "name": "request_id",
+              "value": "={{ $json.request_id || $('Prepare Calculator Row').item.json.request_id }}",
+              "type": "string"
+            },
+            {
+              "id": "set-poll-chat-id",
+              "name": "chat_id",
+              "value": "={{ Number($json.chat_id || $('Prepare Calculator Row').item.json.chat_id || $('Telegram Trigger').first().json.callback_query?.message?.chat?.id || $('Telegram Trigger').first().json.message?.chat?.id || 0) }}",
+              "type": "number"
+            },
+            {
+              "id": "set-poll-attempt",
+              "name": "poll_attempt",
+              "value": "={{ Number($json.poll_attempt ?? 0) }}",
+              "type": "number"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        5952,
+        704
+      ],
+      "id": "d1bf6e36-b1b3-475a-ab27-aa94deefe6f5",
+      "name": "Set Request ID"
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "19c99Qdhpg6Gl9BepmPdISklDJkdV8HEdVRSjw2CaUHE",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "=n8n_output"
+        },
+        "filtersUI": {
+          "values": [
+            {
+              "lookupColumn": "request_id",
+              "lookupValue": "={{ $json.request_id }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "9fd4ca5a-7c2a-4415-b1ea-781d9c19a58c",
+      "name": "Read Result from Calculator",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        6176,
+        704
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "zrQMQIYHWBU5P6J3",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const ctx = $('Set Request ID').first().json;\nconst targetRequestId = String(ctx.request_id || '').trim();\nconst chatId = Number(ctx.chat_id || 0);\nconst pollAttempt = Number(ctx.poll_attempt ?? 0);\nconst rows = $input.all();\n\nfunction parseMoney(val) {\n  if (val == null || val === '') return null;\n  const n = Number(String(val).replace(/\\s/g, '').replace(',', '.'));\n  return Number.isFinite(n) ? n : null;\n}\n\nfunction isRowReady(row) {\n  const j = row.json || {};\n  const finalCost = parseMoney(j.final_cost_rub);\n  if (finalCost != null && finalCost > 0) return true;\n  const invoice = parseMoney(j.invoice_total_foreign);\n  if (invoice != null && invoice > 0) return true;\n  return false;\n}\n\nconst matched = rows.filter((item) => {\n  const rowRequestId = String(item.json.request_id || '').trim();\n  return rowRequestId === targetRequestId;\n});\n\nconst readyRow = matched.find(isRowReady);\n\nif (readyRow) {\n  return [{\n    json: {\n      ...readyRow.json,\n      result_ready: true,\n      chat_id: chatId || readyRow.json.chat_id,\n    },\n  }];\n}\n\nreturn [{\n  json: {\n    result_ready: false,\n    request_id: targetRequestId,\n    chat_id: chatId,\n    poll_attempt: pollAttempt,\n  },\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        6400,
+        704
+      ],
+      "id": "af2927c0-fba0-4928-b4a6-8b7fb68c1e64",
+      "name": "Resolve Calculator Result"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "result-ready-true",
+                    "leftValue": "={{ $json.result_ready === true }}",
+                    "rightValue": "=true",
+                    "operator": {
+                      "type": "boolean",
+                      "operation": "true",
+                      "singleValue": true
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "result_ready"
+            }
+          ]
+        },
+        "options": {
+          "fallbackOutput": "not_ready"
+        }
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.4,
+      "position": [
+        6528,
+        704
+      ],
+      "id": "if-result-ready-switch",
+      "name": "IF Result Ready"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "poll-attempt-lt-max",
+                    "leftValue": "={{ Number($json.poll_attempt ?? 0) }}",
+                    "rightValue": 2,
+                    "operator": {
+                      "type": "number",
+                      "operation": "lt"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "can_retry"
+            }
+          ]
+        },
+        "options": {
+          "fallbackOutput": "give_up"
+        }
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.4,
+      "position": [
+        6656,
+        832
+      ],
+      "id": "if-can-retry-switch",
+      "name": "IF Can Retry"
+    },
+    {
+      "parameters": {
+        "jsCode": "const item = $input.first().json;\nreturn [{\n  json: {\n    request_id: item.request_id,\n    chat_id: item.chat_id,\n    poll_attempt: Number(item.poll_attempt ?? 0) + 1,\n  },\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        6880,
+        768
+      ],
+      "id": "bump-poll-attempt-code",
+      "name": "Bump Poll Attempt"
+    },
+    {
+      "parameters": {
+        "amount": 1
+      },
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        7104,
+        768
+      ],
+      "id": "wait-retry-poll",
+      "name": "Wait Retry",
+      "webhookId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+    },
+    {
+      "parameters": {
+        "chatId": "={{ Number($json.chat_id || 0) }}",
+        "text": "=Расчёт в таблице ещё не готов (ID: {{ $json.request_id }}).\n\nПодождите минуту и отправьте новый запрос или /start.",
+        "additionalFields": {}
+      },
+      "id": "send-sheets-pending-telegram",
+      "name": "Send Sheets Pending",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        6880,
+        960
+      ],
+      "webhookId": "b2c3d4e5-f6a7-8901-bcde-f12345678901",
+      "credentials": {
+        "telegramApi": {
+          "id": "eoIFpo09nPKdyjHZ",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{ Number($json.chat_id || $json.message?.chat?.id || $json.callback_query?.message?.chat?.id || $('Telegram Trigger').first().json.message?.chat?.id || $('Telegram Trigger').first().json.callback_query?.message?.chat?.id || 0) }}",
+        "text": "=Расчет готов ID: {{ $json.request_id }}\nТовар: {{ $json.product_name }}\nДата расчета: {{ $json.calc_date }}\nВалюта: {{ $json.currency }}\n\nСумма инвойса: {{ Number($json.invoice_total_foreign || 0).toFixed(2) }}\nТаможенные расходы: {{ Number(($json.customs_fee_rub || 0) + ($json.duty_rub || 0) + ($json.vat_rub || 0)).toFixed(2) }} ₽\nРасходы по РФ: {{ Number($json.rf_expenses_rub || 0).toFixed(2) }} ₽\n\nИтоговая стоимость партии: {{ Number($json.final_cost_rub || 0).toFixed(2) }} ₽\nСтоимость в РФ за 1 шт: {{ Number($json.final_unit_cost_rub || 0).toFixed(2) }} ₽\nСтоимость за 1 шт в валюте: {{ Number($json.final_unit_cost_foreign || 0).toFixed(2) }}\n\nДля нового расчета отправьте данные одним сообщением.",
+        "additionalFields": {
+          "parse_mode": "HTML"
+        }
+      },
+      "id": "e3b2aac0-6f84-4ef8-9598-831bf5498f97",
+      "name": "Send Calculation Result",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        6624,
+        704
+      ],
+      "webhookId": "1aa0b1ed-c9ad-4856-9aa0-b0cbd467b799",
+      "credentials": {
+        "telegramApi": {
+          "id": "eoIFpo09nPKdyjHZ",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const staticData = $getWorkflowStaticData('global');\nconst item = $input.first().json;\nconst chatId = String(item.chat_id || 0);\nif (chatId !== '0') delete staticData[chatId];\nreturn [{ json: { ...item, session_action: 'clear' } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        6848,
+        704
+      ],
+      "id": "557bfb18-8ff2-4875-8052-b3d444100038",
+      "name": "Clear State"
+    },
+    {
+      "parameters": {
+        "chatId": "={{ Number($json.chat_id || $json.message?.chat?.id || $json.callback_query?.message?.chat?.id || $('Telegram Trigger').first().json.message?.chat?.id || $('Telegram Trigger').first().json.callback_query?.message?.chat?.id || 0) }}",
+        "text": "Извините, произошла техническая ошибка. Пожалуйста, начните запрос заново или напишите /start",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        5280,
+        1088
+      ],
+      "id": "ef8722d7-6b42-481e-b03c-e6122d680601",
+      "name": "Сообщение об ошибке",
+      "webhookId": "66b54d23-8802-4426-90a5-aa7192467d98",
+      "credentials": {
+        "telegramApi": {
+          "id": "eoIFpo09nPKdyjHZ",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "1",
+              "leftValue": "={{ $(\"Telegram Trigger\").item.json.message.photo }}",
+              "rightValue": "",
+              "operator": {
+                "type": "any",
+                "operation": "exists",
+                "singleValue": true
+              }
+            },
+            {
+              "id": "416064f1-ecf1-429d-88a0-f9394ae9617c",
+              "leftValue": "={{ !!$json.message?.photo }}",
+              "rightValue": "exists",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            },
+            {
+              "id": "22ff01a1-ed15-494c-9520-80d1169efb13",
+              "leftValue": "={{ !!$json.message?.document }}",
+              "rightValue": "exists",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "or"
+        },
+        "options": {}
+      },
+      "id": "05340a97-db4c-49ae-a5c5-82a613e04e43",
+      "name": "Check Photo/Document",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1792,
+        544
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "skip-ocr-1",
+              "name": "extracted_image_text",
+              "value": "",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "0f66f04d-d524-47a2-b22c-567ecab8e447",
+      "name": "Skip OCR",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        2688,
+        544
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "05a185cd-a6f6-4677-ad35-cbf8a187a76e",
+      "name": "Merge Paths",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        2912,
+        544
+      ]
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "19c99Qdhpg6Gl9BepmPdISklDJkdV8HEdVRSjw2CaUHE",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "=n8n_sessions"
+        },
+        "filtersUI": {
+          "values": [
+            {
+              "lookupColumn": "chat_id",
+              "lookupValue": "={{ String($json.message?.chat?.id ?? $json.callback_query?.message?.chat?.id ?? $json.message?.from?.id ?? $json.callback_query?.from?.id ?? '') }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "read-session-sheet",
+      "name": "Read Session Sheet",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        224,
+        1088
+      ],
+      "alwaysOutputData": true,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "zrQMQIYHWBU5P6J3",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "session-needs-clear-check",
+              "leftValue": "={{ $json.session_needs_clear === true }}",
+              "rightValue": "=true",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        560,
+        1088
+      ],
+      "id": "if-session-needs-clear",
+      "name": "IF Session Needs Clear"
+    },
+    {
+      "parameters": {
+        "jsCode": "const staticData = $getWorkflowStaticData('global');\nconst trigger = $('Telegram Trigger').first().json;\nconst msg = trigger.message || {};\nconst cq = trigger.callback_query || {};\nconst chatIdRaw = msg.chat?.id ?? cq.message?.chat?.id ?? msg.from?.id ?? cq.from?.id ?? 0;\nconst chatId = String(chatIdRaw);\nconst text = String(msg.text || msg.caption || '').trim();\nconst callback = String(cq.data || '').trim();\n\nlet sheetSaved = null;\ntry {\n  const sheetRows = $('Read Session Sheet').all();\n  for (const row of sheetRows) {\n    const rowChatId = String(row.json?.chat_id ?? '').trim();\n    if (!rowChatId || rowChatId !== chatId) continue;\n    let draft = null;\n    try {\n      const parsed = JSON.parse(row.json.draft_json || '{}');\n      if (parsed && typeof parsed === 'object' && Object.keys(parsed).length) draft = parsed;\n    } catch (e) {}\n    sheetSaved = {\n      state: String(row.json.state || 'new'),\n      draft,\n      edit_field: row.json.edit_field ? String(row.json.edit_field) : null,\n    };\n    break;\n  }\n} catch (e) {}\n\nlet saved = staticData[chatId] || {};\nconst staticHasData =\n  (saved.state && saved.state !== 'new') ||\n  (saved.draft && typeof saved.draft === 'object' && Object.keys(saved.draft).length) ||\n  !!saved.edit_field;\nif (sheetSaved !== null && !staticHasData) {\n  saved = {\n    state: sheetSaved.state || 'new',\n    draft: sheetSaved.draft,\n    edit_field: sheetSaved.edit_field,\n  };\n} else if (sheetSaved !== null && staticHasData) {\n  saved = {\n    state: saved.state || sheetSaved.state || 'new',\n    draft: saved.draft || sheetSaved.draft,\n    edit_field: saved.edit_field || sheetSaved.edit_field,\n  };\n}\n\nconst editField = saved.edit_field || null;\nconst isResetCommand = /^(\\/start|\\/reset|сброс)$/i.test(text);\nconst isNewMessageAtConfirm =\n  saved.state === 'waiting_confirmation' &&\n  text &&\n  !callback &&\n  !editField;\nconst sessionNeedsClear = isResetCommand || isNewMessageAtConfirm;\n\nif (chatId !== '0' && sessionNeedsClear) {\n  delete staticData[chatId];\n  saved = {};\n}\n\nconst draft = saved.draft || null;\nconst savedState = saved.state || 'new';\n\nreturn [{\n  json: {\n    ...trigger,\n    chat_id: Number(chatIdRaw || 0),\n    user_message: isResetCommand ? '' : text,\n    callback_action: callback,\n    saved_state: savedState,\n    saved_draft: draft,\n    output_parsed: draft,\n    edit_field: saved.edit_field || null,\n    reset_requested: isResetCommand,\n    session_needs_clear: sessionNeedsClear,\n    session_action: sessionNeedsClear ? 'clear' : undefined,\n  },\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        448,
+        1088
+      ],
+      "id": "load-state-simple",
+      "name": "Load State Simple"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "text-reset-command",
+                    "leftValue": "={{ $json.reset_requested === true }}",
+                    "rightValue": "=true",
+                    "operator": {
+                      "type": "boolean",
+                      "operation": "true",
+                      "singleValue": true
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "text_reset_command"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "telegram-callback-route",
+                    "leftValue": "={{ !!$json.callback_action && (($json.callback_action === 'confirm' && !!$json.saved_draft?.product_name && !!$json.saved_draft?.quantity && !!$json.saved_draft?.unit_price && !!$json.saved_draft?.currency) || $json.saved_state === 'waiting_confirmation') }}",
+                    "rightValue": "=true",
+                    "operator": {
+                      "type": "boolean",
+                      "operation": "true",
+                      "singleValue": true
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "telegram_callback"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.saved_state }}",
+                    "rightValue": "waiting_confirmation",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  },
+                  {
+                    "leftValue": "={{ !!$json.user_message }}",
+                    "rightValue": "=true",
+                    "operator": {
+                      "type": "boolean",
+                      "operation": "true",
+                      "singleValue": true
+                    }
+                  },
+                  {
+                    "id": "message-waiting-edit-field",
+                    "leftValue": "={{ !!$json.edit_field }}",
+                    "rightValue": "=true",
+                    "operator": {
+                      "type": "boolean",
+                      "operation": "true",
+                      "singleValue": true
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "message_waiting_confirmation"
+            }
+          ]
+        },
+        "options": {
+          "fallbackOutput": "extra"
+        }
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.4,
+      "position": [
+        672,
+        1088
+      ],
+      "id": "route-state-simple",
+      "name": "Route State Simple"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.callback_action }}",
+                    "rightValue": "confirm",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "confirm"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.callback_action }}",
+                    "rightValue": "reset",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "reset"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.callback_action }}",
+                    "rightValue": "edit_",
+                    "operator": {
+                      "type": "string",
+                      "operation": "contains"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "edit"
+            }
+          ]
+        },
+        "options": {
+          "fallbackOutput": "other"
+        }
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.4,
+      "position": [
+        896,
+        1408
+      ],
+      "id": "route-callback-simple",
+      "name": "Route Callback Simple"
+    },
+    {
+      "parameters": {
+        "jsCode": "const staticData = $getWorkflowStaticData('global');\nconst chatId = String($json.chat_id || 0);\nconst draft = $json.saved_draft || {};\nconst action = String($json.callback_action || '');\nconst field = action.replace('edit_', '');\nstaticData[chatId] = { state: 'waiting_confirmation', draft: { ...draft }, edit_field: field };\nreturn [{ json: { ...$json, edit_field: field } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1120,
+        1536
+      ],
+      "id": "set-edit-field-simple",
+      "name": "Set Edit Field Simple"
+    },
+    {
+      "parameters": {
+        "chatId": "={{ Number($json.chat_id || 0) }}",
+        "text": "={{ $json.edit_field === 'quantity' ? 'Введите только новое количество одним сообщением.' : $json.edit_field === 'price' ? 'Введите только новую цену одним сообщением.' : $json.edit_field === 'currency' ? 'Введите только новую валюту: CNY, USD, EUR или RUB.' : $json.edit_field === 'product' ? 'Введите только новое название товара одним сообщением.' : 'Введите новое значение одним сообщением.' }}",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        1344,
+        1536
+      ],
+      "id": "ask-edit-simple",
+      "name": "Ask Edit Simple",
+      "webhookId": "ask-edit-simple",
+      "credentials": {
+        "telegramApi": {
+          "id": "eoIFpo09nPKdyjHZ",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const staticData = $getWorkflowStaticData('global');\nconst chatId = String($json.chat_id || 0);\nconst saved = staticData[chatId] || {};\nconst editField = $json.edit_field || saved.edit_field || null;\nconst text = String($json.user_message || '').trim();\nconst hasPhoto = !!($json.message?.photo || $json.message?.document);\nif (!editField) { return [{ json: { ...$json, reset_to_new: true, correction_valid: false } }]; }\nif (hasPhoto) { return [{ json: { ...$json, correction_valid: false, error_message: 'Для исправления отправьте только текстовое значение, без фото и документов.' } }]; }\nconst updates = {};\nfunction parseNum(str) { const n = Number(String(str).replace(/\\s/g,'').replace(',','.').replace(/[^0-9.]/g,'')); return Number.isFinite(n) && n>0 ? n : null; }\nfunction normalizeCurrency(raw) { const v = String(raw).toUpperCase().trim(); if (['RMB','CNY'].includes(v) || v.includes('ЮАН')) return 'CNY'; if (['USD','$'].includes(v) || v.includes('ДОЛ')) return 'USD'; if (['EUR','€'].includes(v) || v.includes('ЕВРО')) return 'EUR'; if (['RUB','₽'].includes(v) || v.includes('РУБ')) return 'RUB'; return null; }\nif (editField === 'quantity') { const v = parseNum(text); if (v) updates.quantity = v; }\nif (editField === 'price') { const v = parseNum(text); if (v) updates.unit_price = v; }\nif (editField === 'currency') { const c = normalizeCurrency(text); if (c) updates.currency = c; }\nif (editField === 'product') { if (text) updates.product_name = text; }\nreturn [{ json: { ...$json, updates, correction_valid: Object.keys(updates).length > 0 } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        896,
+        912
+      ],
+      "id": "parse-edit-simple",
+      "name": "Parse Edit Simple"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.correction_valid === true }}",
+              "rightValue": "=true",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        1120,
+        912
+      ],
+      "id": "if-edit-valid-simple",
+      "name": "If Edit Valid Simple"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "edit-updates-currency",
+              "leftValue": "={{ !!$json.updates?.currency }}",
+              "rightValue": "=true",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        1232,
+        800
+      ],
+      "id": "if-currency-edit",
+      "name": "IF Currency Edit"
+    },
+    {
+      "parameters": {
+        "url": "https://www.cbr-xml-daily.ru/daily_json.js",
+        "options": {}
+      },
+      "id": "cbr-edit-http",
+      "name": "Курс ЦБ Edit",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        1456,
+        736
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const staticData = $getWorkflowStaticData('global');\nconst item = $('If Edit Valid Simple').first().json;\nconst chatId = String(item.chat_id || 0);\nconst saved = staticData[chatId] || {};\nconst draft = item.saved_draft || saved.draft || {};\nconst updates = item.updates || {};\nconst corrected = { ...draft, ...updates, status: 'need_confirmation' };\n\nif (updates.currency && corrected.currency) {\n  try {\n    const cbr = $('Курс ЦБ Edit').first().json;\n    const raw = cbr.data ?? cbr.body ?? cbr;\n    const d = typeof raw === 'string' ? JSON.parse(raw) : (raw.Valute ? raw : JSON.parse(JSON.stringify(raw)));\n    const rates = {\n      CNY: d.Valute?.CNY?.Value,\n      USD: d.Valute?.USD?.Value,\n      EUR: d.Valute?.EUR?.Value,\n      RUB: 1,\n    };\n    const cur = corrected.currency;\n    if (rates[cur] != null) corrected.exchange_rate = rates[cur];\n    if (d.Date) corrected.calc_date = d.Date;\n  } catch (e) {\n    corrected.exchange_rate_refresh_error = String(e?.message || e);\n  }\n}\n\nif (chatId !== '0') {\n  staticData[chatId] = { state: 'waiting_confirmation', draft: corrected, edit_field: null };\n}\nreturn [{ json: { ...item, saved_draft: corrected, output_parsed: corrected, edit_field: null, ...corrected } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1344,
+        912
+      ],
+      "id": "apply-edit-simple",
+      "name": "Apply Edit Simple"
+    },
+    {
+      "parameters": {
+        "chatId": "={{ Number($json.chat_id || 0) }}",
+        "text": "={{ $json.error_message || 'Не удалось распознать новое значение. Лучше нажмите «Сбросить» и введите запрос заново.' }}",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        1344,
+        1056
+      ],
+      "id": "send-edit-error-simple",
+      "name": "Send Edit Error Simple",
+      "webhookId": "send-edit-error-simple",
+      "credentials": {
+        "telegramApi": {
+          "id": "eoIFpo09nPKdyjHZ",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const staticData = $getWorkflowStaticData('global');\nconst chatId = String($json.chat_id || 0);\nif (chatId !== '0') delete staticData[chatId];\nreturn [{ json: { ...$json, saved_state: 'new', session_action: 'clear', chat_id: Number($json.chat_id || 0) } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1120,
+        1280
+      ],
+      "id": "reset-state-simple",
+      "name": "Reset State Simple"
+    },
+    {
+      "parameters": {
+        "chatId": "={{ Number($json.chat_id || 0) }}",
+        "text": "Текущий запрос сброшен. Отправьте новый запрос одним сообщением: товар, количество, цена и валюта.",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        1344,
+        1280
+      ],
+      "id": "send-reset-message-simple",
+      "name": "Send Reset Message Simple",
+      "webhookId": "send-reset-message-simple",
+      "credentials": {
+        "telegramApi": {
+          "id": "eoIFpo09nPKdyjHZ",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const staticData = $getWorkflowStaticData('global');\nconst item = $input.first().json;\nconst chatId = String(item.chat_id || 0);\nconst prev = staticData[chatId] || {};\nconst draft = item.output_parsed || prev.draft || {};\nif (chatId !== '0') { staticData[chatId] = { state: 'waiting_confirmation', draft }; }\nreturn [{ json: { ...item, saved_draft: draft } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        5504,
+        512
+      ],
+      "id": "save-draft-minimal",
+      "name": "Save Draft Minimal"
+    },
+    {
+      "parameters": {
+        "jsCode": "const item = $input.first().json;\nconst chatId = String(item.chat_id || 0);\nif (chatId === '0') return [{ json: item }];\n\nconst action = item.session_action || (item.session_needs_clear ? 'clear' : 'upsert');\nlet state = 'new';\nlet draft = {};\nlet editField = '';\n\nif (action === 'clear') {\n  state = 'new';\n} else {\n  if (item.output_parsed) {\n    state = 'waiting_confirmation';\n    draft = item.output_parsed;\n  } else if (item.saved_draft) {\n    state = 'waiting_confirmation';\n    draft = item.saved_draft;\n  } else if (item.saved_state) {\n    state = item.saved_state;\n    draft = item.saved_draft || {};\n  }\n  editField = item.edit_field || '';\n}\n\nlet sessionRestoreTarget = 'router';\nif (item.edit_field) {\n  sessionRestoreTarget = 'ask_edit';\n} else if (item.output_parsed?.status === 'need_confirmation') {\n  sessionRestoreTarget = 'route_by_status';\n} else if (item.reset_requested || (item.session_action === 'clear' && item.saved_state === 'new')) {\n  sessionRestoreTarget = 'reset_message';\n}\n\nreturn [{\n  json: {\n    ...item,\n    session_chat_id: chatId,\n    session_state: state,\n    session_draft_json: JSON.stringify(draft && typeof draft === 'object' ? draft : {}),\n    session_edit_field: String(editField || ''),\n    session_updated_at: new Date().toISOString(),\n    session_restore_target: sessionRestoreTarget,\n  },\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        5728,
+        512
+      ],
+      "id": "prepare-session-sync",
+      "name": "Prepare Session Sync"
+    },
+    {
+      "parameters": {
+        "operation": "appendOrUpdate",
+        "documentId": {
+          "__rl": true,
+          "value": "19c99Qdhpg6Gl9BepmPdISklDJkdV8HEdVRSjw2CaUHE",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "=n8n_sessions"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "chat_id": "={{ $json.session_chat_id }}",
+            "state": "={{ $json.session_state }}",
+            "draft_json": "={{ $json.session_draft_json }}",
+            "edit_field": "={{ $json.session_edit_field }}",
+            "updated_at": "={{ $json.session_updated_at }}"
+          },
+          "matchingColumns": [
+            "chat_id"
+          ],
+          "schema": [
+            {
+              "id": "chat_id",
+              "displayName": "chat_id",
+              "required": false,
+              "defaultMatch": true,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "state",
+              "displayName": "state",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "draft_json",
+              "displayName": "draft_json",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "edit_field",
+              "displayName": "edit_field",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "updated_at",
+              "displayName": "updated_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "upsert-session-sheet",
+      "name": "Upsert Session Sheet",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        5952,
+        512
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "zrQMQIYHWBU5P6J3",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const item = $('Prepare Session Sync').first().json;\nreturn [{ json: item }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        6176,
+        512
+      ],
+      "id": "restore-after-session-sync",
+      "name": "Restore After Session Sync"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "restore-target-reset",
+                    "leftValue": "={{ $json.session_restore_target }}",
+                    "rightValue": "reset_message",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "to_reset_message"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "restore-target-ask-edit",
+                    "leftValue": "={{ $json.session_restore_target }}",
+                    "rightValue": "ask_edit",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "to_ask_edit"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "restore-target-route-status",
+                    "leftValue": "={{ $json.session_restore_target }}",
+                    "rightValue": "route_by_status",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "to_route_by_status"
+            }
+          ]
+        },
+        "options": {
+          "fallbackOutput": "extra"
+        }
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.4,
+      "position": [
+        6400,
+        512
+      ],
+      "id": "route-session-restore-switch",
+      "name": "Route Session Restore"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "not-terminal-clear",
+              "leftValue": "={{ !$('Clear State').isExecuted }}",
+              "rightValue": "=true",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        6176,
+        640
+      ],
+      "id": "if-continue-after-session-upsert",
+      "name": "IF Continue After Session Upsert"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Telegram Trigger": {
+      "main": [
+        [
+          {
+            "node": "Read Session Sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read Session Sheet": {
+      "main": [
+        [
+          {
+            "node": "Load State Simple",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Load State Simple": {
+      "main": [
+        [
+          {
+            "node": "IF Session Needs Clear",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF Session Needs Clear": {
+      "main": [
+        [
+          {
+            "node": "Route State Simple",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Route State Simple",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Session Sync": {
+      "main": [
+        [
+          {
+            "node": "Upsert Session Sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Upsert Session Sheet": {
+      "main": [
+        [
+          {
+            "node": "IF Continue After Session Upsert",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF Continue After Session Upsert": {
+      "main": [
+        [
+          {
+            "node": "Restore After Session Sync",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    },
+    "Restore After Session Sync": {
+      "main": [
+        [
+          {
+            "node": "Route Session Restore",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Route Session Restore": {
+      "main": [
+        [
+          {
+            "node": "Send Reset Message Simple",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Ask Edit Simple",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Route by Status",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Route State Simple",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Route State Simple": {
+      "main": [
+        [
+          {
+            "node": "Reset State Simple",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Route Callback Simple",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Parse Edit Simple",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Check Photo/Document",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Route Callback Simple": {
+      "main": [
+        [
+          {
+            "node": "Prepare Calculator Row",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Reset State Simple",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Set Edit Field Simple",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    },
+    "Set Edit Field Simple": {
+      "main": [
+        [
+          {
+            "node": "Ask Edit Simple",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Edit Simple": {
+      "main": [
+        [
+          {
+            "node": "If Edit Valid Simple",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If Edit Valid Simple": {
+      "main": [
+        [
+          {
+            "node": "IF Currency Edit",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send Edit Error Simple",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF Currency Edit": {
+      "main": [
+        [
+          {
+            "node": "Курс ЦБ Edit",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Apply Edit Simple",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Курс ЦБ Edit": {
+      "main": [
+        [
+          {
+            "node": "Apply Edit Simple",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Apply Edit Simple": {
+      "main": [
+        [
+          {
+            "node": "Save Draft Minimal",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Reset State Simple": {
+      "main": [
+        [
+          {
+            "node": "Prepare Session Sync",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Photo/Document": {
+      "main": [
+        [
+          {
+            "node": "Get a file",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Skip OCR",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get a file": {
+      "main": [
+        [
+          {
+            "node": "OCR",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OCR": {
+      "main": [
+        [
+          {
+            "node": "Очистка OCR",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Очистка OCR": {
+      "main": [
+        [
+          {
+            "node": "Merge Paths",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Skip OCR": {
+      "main": [
+        [
+          {
+            "node": "Merge Paths",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Merge Paths": {
+      "main": [
+        [
+          {
+            "node": "Курс ЦБ",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Курс ЦБ": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields1": {
+      "main": [
+        [
+          {
+            "node": "Parse User Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse User Input": {
+      "main": [
+        [
+          {
+            "node": "Check Parse Ready",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Parse Ready": {
+      "main": [
+        [
+          {
+            "node": "Build Confirmation State",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "LLM Fallback Parser",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenRouter LLM Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "LLM Fallback Parser",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "LLM Fallback Parser": {
+      "main": [
+        [
+          {
+            "node": "Merge LLM Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge LLM Result": {
+      "main": [
+        [
+          {
+            "node": "Build Confirmation State",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Confirmation State": {
+      "main": [
+        [
+          {
+            "node": "Save Draft Minimal",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Route by Status": {
+      "main": [
+        [
+          {
+            "node": "Send Confirmation",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send More Data Request",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Сообщение об ошибке",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Confirmation": {
+      "main": [
+        []
+      ]
+    },
+    "Prepare Calculator Row": {
+      "main": [
+        [
+          {
+            "node": "Write Data to Calculator",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Write Data to Calculator": {
+      "main": [
+        [
+          {
+            "node": "Wait",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait": {
+      "main": [
+        [
+          {
+            "node": "Set Request ID",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set Request ID": {
+      "main": [
+        [
+          {
+            "node": "Read Result from Calculator",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read Result from Calculator": {
+      "main": [
+        [
+          {
+            "node": "Resolve Calculator Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Resolve Calculator Result": {
+      "main": [
+        [
+          {
+            "node": "IF Result Ready",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF Result Ready": {
+      "main": [
+        [
+          {
+            "node": "Send Calculation Result",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "IF Can Retry",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF Can Retry": {
+      "main": [
+        [
+          {
+            "node": "Bump Poll Attempt",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send Sheets Pending",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Bump Poll Attempt": {
+      "main": [
+        [
+          {
+            "node": "Wait Retry",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait Retry": {
+      "main": [
+        [
+          {
+            "node": "Set Request ID",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Sheets Pending": {
+      "main": [
+        [
+          {
+            "node": "Clear State",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Calculation Result": {
+      "main": [
+        [
+          {
+            "node": "Clear State",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Save Draft Minimal": {
+      "main": [
+        [
+          {
+            "node": "Prepare Session Sync",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Clear State": {
+      "main": [
+        [
+          {
+            "node": "Prepare Session Sync",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "6289537573cc49c6fdec40a026fdbf4b6dde175fb2bddf05f8ef4a3674035e1f"
+  },
+  "tags": []
+}
