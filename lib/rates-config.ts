@@ -76,7 +76,7 @@ export const IMPORT_RATE_CONFIGS: Record<RouteCode, ImportRateConfig> = {
   "qingdao-novosibirsk": {
     ...baseChinaRouteConfig,
     route_code: "qingdao-novosibirsk",
-    route_label: "Китай, Циндао → Новосибирск"
+    route_label: "Китай, Циндао → НСК"
   }
 };
 

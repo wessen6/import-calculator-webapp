@@ -120,6 +120,9 @@ export function RatesSettingsForm() {
   >({});
 
   const routeGroups = useMemo(() => groupConfigsByRoute(configs), [configs]);
+  const isAdminMode = ownerVerified && ownerPassword.length > 0;
+  const readOnlyFieldClass =
+    "disabled:cursor-not-allowed disabled:bg-stone-100 disabled:text-stone-700";
 
   useEffect(() => {
     fetch("/api/rates")
@@ -141,6 +144,10 @@ export function RatesSettingsForm() {
     transportType: StoredRateConfig["transport_type"],
     patch: Partial<StoredRateConfig>
   ) {
+    if (!isAdminMode) {
+      return;
+    }
+
     setConfigs((current) =>
       current.map((config) =>
         config.route_code === routeCode && config.transport_type === transportType
@@ -155,6 +162,10 @@ export function RatesSettingsForm() {
   }
 
   function updateSettings(patch: Partial<StoredRateSettings>) {
+    if (!isAdminMode) {
+      return;
+    }
+
     setSettings((current) => (current ? { ...current, ...patch } : current));
   }
 
@@ -183,8 +194,12 @@ export function RatesSettingsForm() {
     return (
       <select
         value={value}
+        disabled={!isAdminMode}
         onChange={(event) => onChange(event.target.value === "with_vat" ? "with_vat" : "without_vat")}
-        className="w-full rounded-b-2xl border border-t-0 border-stone-200 bg-stone-50 px-3 py-3 text-sm outline-none transition focus:border-stone-400 focus:bg-white sm:w-28 sm:rounded-l-none sm:rounded-r-2xl sm:border-l-0 sm:border-t"
+        className={clsx(
+          "w-full rounded-b-2xl border border-t-0 border-stone-200 bg-stone-50 px-3 py-3 text-sm outline-none transition focus:border-stone-400 focus:bg-white sm:w-28 sm:shrink-0 sm:rounded-l-none sm:rounded-r-2xl sm:border-l-0 sm:border-t lg:w-[6.5rem] lg:px-2 lg:text-xs xl:w-[5.75rem]",
+          readOnlyFieldClass
+        )}
       >
         <option value="without_vat">Без НДС</option>
         <option value="with_vat">С НДС</option>
@@ -206,12 +221,16 @@ export function RatesSettingsForm() {
         <input
           type="text"
           inputMode="decimal"
+          disabled={!isAdminMode}
           value={getDraftValue(fieldKey, value * 100)}
           onBlur={() => clearDraftValue(fieldKey)}
           onChange={(event) =>
             updateDraftValue(fieldKey, event.target.value, (nextValue) => onValueChange(nextValue / 100))
           }
-          className="min-w-0 flex-1 rounded-l-2xl border border-stone-200 bg-stone-50 px-3 py-3 text-base outline-none transition focus:border-stone-400 focus:bg-white"
+          className={clsx(
+            "min-w-0 flex-1 rounded-l-2xl border border-stone-200 bg-stone-50 px-3 py-3 text-base outline-none transition focus:border-stone-400 focus:bg-white",
+            readOnlyFieldClass
+          )}
         />
         <span className="rounded-r-2xl border border-l-0 border-stone-200 bg-stone-100 px-3 py-3 text-sm font-semibold text-stone-500">
           %
@@ -237,9 +256,13 @@ export function RatesSettingsForm() {
           type="number"
           min="0"
           step="0.01"
+          disabled={!isAdminMode}
           value={value}
           onChange={(event) => onValueChange(Number(event.target.value))}
-          className="min-w-0 flex-1 rounded-t-2xl border border-stone-200 bg-stone-50 px-3 py-3 text-base outline-none transition focus:border-stone-400 focus:bg-white sm:rounded-l-2xl sm:rounded-r-none"
+          className={clsx(
+            "min-w-0 flex-1 rounded-t-2xl border border-stone-200 bg-stone-50 px-3 py-3 text-base outline-none transition focus:border-stone-400 focus:bg-white sm:min-w-[4.5rem] sm:rounded-l-2xl sm:rounded-r-none lg:min-w-[5.5rem]",
+            readOnlyFieldClass
+          )}
         />
         {renderVatSelect(vatMode, onVatModeChange)}
       </div>
@@ -252,20 +275,17 @@ export function RatesSettingsForm() {
   }
 
   function renderSaveBar(id: string, isSticky = false) {
-    const isAdminMode = ownerVerified && ownerPassword.length > 0;
-    const isPendingAuth = !isAdminMode && ownerPassword.trim().length > 0;
+    const hasPasswordDraft = ownerPassword.trim().length > 0;
 
     const statusLabel = isAdminMode
       ? "Режим администратора"
-      : isPendingAuth
-        ? "Проверка пароля"
+      : hasPasswordDraft
+        ? "Ожидает вход"
         : "Только просмотр";
 
     const statusHint = isAdminMode
       ? "Можно сохранять изменения на сервер."
-      : isPendingAuth
-        ? "Нажмите «Сохранить» — пароль проверится на сервере."
-        : "Введите пароль владельца, чтобы сохранять изменения.";
+      : "Введите пароль и нажмите «Войти», чтобы редактировать ставки.";
 
     return (
       <section
@@ -273,8 +293,8 @@ export function RatesSettingsForm() {
           "rounded-xl border p-2 shadow-sm backdrop-blur",
           isSticky && "sticky top-0 z-20",
           isAdminMode && "border-emerald-300 bg-emerald-50/80",
-          isPendingAuth && "border-amber-200 bg-amber-50/60",
-          !isAdminMode && !isPendingAuth && "border-stone-200 bg-white/95"
+          !isAdminMode && hasPasswordDraft && "border-amber-200 bg-amber-50/60",
+          !isAdminMode && !hasPasswordDraft && "border-stone-200 bg-white/95"
         )}
       >
         <div className="flex items-center gap-2">
@@ -282,11 +302,11 @@ export function RatesSettingsForm() {
             className={clsx(
               "inline-flex min-w-0 flex-1 items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-semibold",
               isAdminMode && "bg-emerald-100 text-emerald-800",
-              isPendingAuth && "bg-amber-100 text-amber-900",
-              !isAdminMode && !isPendingAuth && "bg-stone-100 text-stone-600"
+              !isAdminMode && hasPasswordDraft && "bg-amber-100 text-amber-900",
+              !isAdminMode && !hasPasswordDraft && "bg-stone-100 text-stone-600"
             )}
           >
-            <span aria-hidden="true">{isAdminMode ? "✓" : isPendingAuth ? "●" : "○"}</span>
+            <span aria-hidden="true">{isAdminMode ? "✓" : hasPasswordDraft ? "●" : "○"}</span>
             <span className="truncate">{statusLabel}</span>
           </span>
 
@@ -301,7 +321,7 @@ export function RatesSettingsForm() {
               </button>
               <button
                 type="button"
-                onClick={handleSave}
+                onClick={() => void handleSave()}
                 className="h-8 shrink-0 rounded-full bg-stone-950 px-3 text-xs font-semibold text-white"
               >
                 Сохранить
@@ -325,22 +345,21 @@ export function RatesSettingsForm() {
                   setOwnerPassword(event.target.value);
                   setOwnerVerified(false);
                 }}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter" && hasPasswordDraft) {
+                    void handleOwnerLogin();
+                  }
+                }}
                 placeholder="Пароль владельца"
                 className="h-8 min-w-0 flex-1 rounded-lg border border-stone-200 bg-stone-50 px-3 text-xs outline-none transition focus:border-stone-400 focus:bg-white"
               />
               <button
                 type="button"
-                onClick={handleReset}
-                className="h-8 shrink-0 rounded-full border border-stone-200 bg-white px-3 text-xs font-semibold text-stone-700"
+                disabled={!hasPasswordDraft}
+                onClick={() => void handleOwnerLogin()}
+                className="h-8 shrink-0 rounded-full bg-stone-950 px-3 text-xs font-semibold text-white disabled:cursor-not-allowed disabled:bg-stone-400"
               >
-                Сброс
-              </button>
-              <button
-                type="button"
-                onClick={handleSave}
-                className="h-8 shrink-0 rounded-full bg-stone-950 px-3 text-xs font-semibold text-white"
-              >
-                Сохранить
+                Войти
               </button>
             </>
           )}
@@ -350,18 +369,34 @@ export function RatesSettingsForm() {
     );
   }
 
+  async function handleOwnerLogin() {
+    const loggedIn = await persistRates({ loginOnly: true });
+    if (loggedIn) {
+      setImportMessageTone("success");
+      setImportMessage("Вход выполнен. Можно редактировать и сохранять ставки.");
+    }
+  }
+
   async function handleSave() {
+    const saved = await persistRates();
+    if (saved) {
+      setImportMessageTone("success");
+      setImportMessage("Ставки сохранены на сервере. Данные доступны для новых расчётов.");
+    }
+  }
+
+  async function persistRates(options?: { loginOnly?: boolean }): Promise<boolean> {
     setError(null);
     if (!settings) {
       setImportMessageTone("error");
       setImportMessage("Нет данных для сохранения. Обновите страницу.");
-      return;
+      return false;
     }
 
     if (!ownerPassword.trim()) {
       setImportMessageTone("error");
-      setImportMessage("Введите пароль владельца и нажмите «Сохранить» снова.");
-      return;
+      setImportMessage("Введите пароль владельца.");
+      return false;
     }
 
     const response = await fetch("/api/rates", {
@@ -376,8 +411,13 @@ export function RatesSettingsForm() {
 
     if (!response.ok) {
       setImportMessageTone("error");
-      setImportMessage(data.error ?? "Не удалось сохранить ставки. Проверьте пароль владельца.");
-      return;
+      setImportMessage(
+        data.error ??
+          (options?.loginOnly
+            ? "Неверный пароль. Проверьте и нажмите «Войти» снова."
+            : "Не удалось сохранить ставки. Проверьте пароль владельца.")
+      );
+      return false;
     }
 
     if (data.configs) {
@@ -392,8 +432,7 @@ export function RatesSettingsForm() {
 
     setPreImportSnapshot(null);
     setOwnerVerified(true);
-    setImportMessageTone("success");
-    setImportMessage("Ставки сохранены на сервере. Данные доступны для новых расчётов.");
+    return true;
   }
 
   function handleExportRates() {
@@ -438,6 +477,12 @@ export function RatesSettingsForm() {
   async function handleImportRates(file: File | undefined) {
     if (!file) return;
 
+    if (!isAdminMode) {
+      setImportMessageTone("error");
+      setImportMessage("Импорт JSON доступен после входа администратора.");
+      return;
+    }
+
     setError(null);
     setImportMessage(null);
 
@@ -465,7 +510,7 @@ export function RatesSettingsForm() {
       setDraftInputs({});
       setImportMessageTone("info");
       setImportMessage(
-        "Ставки загружены в форму. Проверьте значения и нажмите «Сохранить» с паролем владельца."
+        "Ставки загружены в форму. Проверьте значения и нажмите «Сохранить»."
       );
     } catch (importError) {
       setPreImportSnapshot(null);
@@ -516,132 +561,145 @@ export function RatesSettingsForm() {
 
   function renderRouteConfigFields(config: StoredRateConfig) {
     return (
-      <div className="mt-4 grid grid-cols-2 gap-3">
-        <div>
-          <label className="text-sm font-semibold text-stone-900">До границы</label>
-          <div className="mt-2 flex">
-            <input
-              type="text"
-              inputMode="decimal"
-              value={getDraftValue(
-                `${config.route_code}-${config.transport_type}-pre_border_expenses_foreign`,
-                config.pre_border_expenses_foreign
-              )}
-              onBlur={() =>
-                clearDraftValue(
-                  `${config.route_code}-${config.transport_type}-pre_border_expenses_foreign`
-                )
-              }
-              onChange={(event) =>
-                updateDraftValue(
+      <>
+        <div className="mt-4 grid grid-cols-2 gap-3">
+          <div>
+            <label className="text-sm font-semibold text-stone-900">До границы</label>
+            <div className="mt-2 flex">
+              <input
+                type="text"
+                inputMode="decimal"
+                disabled={!isAdminMode}
+                value={getDraftValue(
                   `${config.route_code}-${config.transport_type}-pre_border_expenses_foreign`,
-                  event.target.value,
-                  (value) =>
-                    updateConfig(config.route_code, config.transport_type, {
-                      pre_border_expenses_foreign: value
-                    })
-                )
-              }
-              className="min-w-0 flex-1 rounded-l-2xl border border-stone-200 bg-stone-50 px-3 py-3 text-base outline-none transition focus:border-stone-400 focus:bg-white"
-            />
-            <span className="rounded-r-2xl border border-l-0 border-stone-200 bg-stone-100 px-3 py-3 text-sm font-semibold text-stone-500">
-              USD
-            </span>
+                  config.pre_border_expenses_foreign
+                )}
+                onBlur={() =>
+                  clearDraftValue(
+                    `${config.route_code}-${config.transport_type}-pre_border_expenses_foreign`
+                  )
+                }
+                onChange={(event) =>
+                  updateDraftValue(
+                    `${config.route_code}-${config.transport_type}-pre_border_expenses_foreign`,
+                    event.target.value,
+                    (value) =>
+                      updateConfig(config.route_code, config.transport_type, {
+                        pre_border_expenses_foreign: value
+                      })
+                  )
+                }
+                className={clsx(
+                  "min-w-0 flex-1 rounded-l-2xl border border-stone-200 bg-stone-50 px-3 py-3 text-base outline-none transition focus:border-stone-400 focus:bg-white",
+                  readOnlyFieldClass
+                )}
+              />
+              <span className="rounded-r-2xl border border-l-0 border-stone-200 bg-stone-100 px-3 py-3 text-sm font-semibold text-stone-500">
+                USD
+              </span>
+            </div>
           </div>
-        </div>
-        <div>
-          <label className="text-sm font-semibold text-stone-900">Прочие до границы</label>
-          <div className="mt-2 flex">
-            <input
-              type="text"
-              inputMode="decimal"
-              value={getDraftValue(
-                `${config.route_code}-${config.transport_type}-other_pre_border_expenses_foreign`,
-                config.other_pre_border_expenses_foreign
-              )}
-              onBlur={() =>
-                clearDraftValue(
-                  `${config.route_code}-${config.transport_type}-other_pre_border_expenses_foreign`
-                )
-              }
-              onChange={(event) =>
-                updateDraftValue(
+          <div>
+            <label className="text-sm font-semibold text-stone-900">Прочие до границы</label>
+            <div className="mt-2 flex">
+              <input
+                type="text"
+                inputMode="decimal"
+                disabled={!isAdminMode}
+                value={getDraftValue(
                   `${config.route_code}-${config.transport_type}-other_pre_border_expenses_foreign`,
-                  event.target.value,
-                  (value) =>
-                    updateConfig(config.route_code, config.transport_type, {
-                      other_pre_border_expenses_foreign: value
-                    })
-                )
-              }
-              className="min-w-0 flex-1 rounded-l-2xl border border-stone-200 bg-stone-50 px-3 py-3 text-base outline-none transition focus:border-stone-400 focus:bg-white"
-            />
-            <span className="rounded-r-2xl border border-l-0 border-stone-200 bg-stone-100 px-3 py-3 text-sm font-semibold text-stone-500">
-              USD
-            </span>
+                  config.other_pre_border_expenses_foreign
+                )}
+                onBlur={() =>
+                  clearDraftValue(
+                    `${config.route_code}-${config.transport_type}-other_pre_border_expenses_foreign`
+                  )
+                }
+                onChange={(event) =>
+                  updateDraftValue(
+                    `${config.route_code}-${config.transport_type}-other_pre_border_expenses_foreign`,
+                    event.target.value,
+                    (value) =>
+                      updateConfig(config.route_code, config.transport_type, {
+                        other_pre_border_expenses_foreign: value
+                      })
+                  )
+                }
+                className={clsx(
+                  "min-w-0 flex-1 rounded-l-2xl border border-stone-200 bg-stone-50 px-3 py-3 text-base outline-none transition focus:border-stone-400 focus:bg-white",
+                  readOnlyFieldClass
+                )}
+              />
+              <span className="rounded-r-2xl border border-l-0 border-stone-200 bg-stone-100 px-3 py-3 text-sm font-semibold text-stone-500">
+                USD
+              </span>
+            </div>
           </div>
         </div>
-        <div>
-          <label className="text-sm font-semibold text-stone-900">Перевозка по РФ</label>
-          {renderRubVatControl({
-            value: config.domestic_transport_rub,
-            vatMode: config.domestic_transport_vat_mode,
-            onValueChange: (value) =>
-              updateConfig(config.route_code, config.transport_type, {
-                domestic_transport_rub: value
-              }),
-            onVatModeChange: (value) =>
-              updateConfig(config.route_code, config.transport_type, {
-                domestic_transport_vat_mode: value
-              })
-          })}
+
+        <div className="mt-4 grid grid-cols-2 gap-3 xl:grid-cols-1">
+          <div>
+            <label className="text-sm font-semibold text-stone-900">Перевозка по РФ</label>
+            {renderRubVatControl({
+              value: config.domestic_transport_rub,
+              vatMode: config.domestic_transport_vat_mode,
+              onValueChange: (value) =>
+                updateConfig(config.route_code, config.transport_type, {
+                  domestic_transport_rub: value
+                }),
+              onVatModeChange: (value) =>
+                updateConfig(config.route_code, config.transport_type, {
+                  domestic_transport_vat_mode: value
+                })
+            })}
+          </div>
+          <div>
+            <label className="text-sm font-semibold text-stone-900">Вывоз / простой</label>
+            {renderRubVatControl({
+              value: config.pickup_delivery_demurrage_rub,
+              vatMode: config.pickup_delivery_demurrage_vat_mode,
+              onValueChange: (value) =>
+                updateConfig(config.route_code, config.transport_type, {
+                  pickup_delivery_demurrage_rub: value
+                }),
+              onVatModeChange: (value) =>
+                updateConfig(config.route_code, config.transport_type, {
+                  pickup_delivery_demurrage_vat_mode: value
+                })
+            })}
+          </div>
+          <div>
+            <label className="text-sm font-semibold text-stone-900">ПРР / порт</label>
+            {renderRubVatControl({
+              value: config.port_operations_rub,
+              vatMode: config.port_operations_vat_mode,
+              onValueChange: (value) =>
+                updateConfig(config.route_code, config.transport_type, {
+                  port_operations_rub: value
+                }),
+              onVatModeChange: (value) =>
+                updateConfig(config.route_code, config.transport_type, {
+                  port_operations_vat_mode: value
+                })
+            })}
+          </div>
+          <div>
+            <label className="text-sm font-semibold text-stone-900">Хранение</label>
+            {renderRubVatControl({
+              value: config.storage_rub,
+              vatMode: config.storage_vat_mode,
+              onValueChange: (value) =>
+                updateConfig(config.route_code, config.transport_type, {
+                  storage_rub: value
+                }),
+              onVatModeChange: (value) =>
+                updateConfig(config.route_code, config.transport_type, {
+                  storage_vat_mode: value
+                })
+            })}
+          </div>
         </div>
-        <div>
-          <label className="text-sm font-semibold text-stone-900">Вывоз / простой</label>
-          {renderRubVatControl({
-            value: config.pickup_delivery_demurrage_rub,
-            vatMode: config.pickup_delivery_demurrage_vat_mode,
-            onValueChange: (value) =>
-              updateConfig(config.route_code, config.transport_type, {
-                pickup_delivery_demurrage_rub: value
-              }),
-            onVatModeChange: (value) =>
-              updateConfig(config.route_code, config.transport_type, {
-                pickup_delivery_demurrage_vat_mode: value
-              })
-          })}
-        </div>
-        <div>
-          <label className="text-sm font-semibold text-stone-900">ПРР / порт</label>
-          {renderRubVatControl({
-            value: config.port_operations_rub,
-            vatMode: config.port_operations_vat_mode,
-            onValueChange: (value) =>
-              updateConfig(config.route_code, config.transport_type, {
-                port_operations_rub: value
-              }),
-            onVatModeChange: (value) =>
-              updateConfig(config.route_code, config.transport_type, {
-                port_operations_vat_mode: value
-              })
-          })}
-        </div>
-        <div>
-          <label className="text-sm font-semibold text-stone-900">Хранение</label>
-          {renderRubVatControl({
-            value: config.storage_rub,
-            vatMode: config.storage_vat_mode,
-            onValueChange: (value) =>
-              updateConfig(config.route_code, config.transport_type, {
-                storage_rub: value
-              }),
-            onVatModeChange: (value) =>
-              updateConfig(config.route_code, config.transport_type, {
-                storage_vat_mode: value
-              })
-          })}
-        </div>
-      </div>
+      </>
     );
   }
 
@@ -661,7 +719,8 @@ export function RatesSettingsForm() {
           <button
             type="button"
             onClick={() => importInputRef.current?.click()}
-            className="rounded-full bg-stone-950 px-4 py-3 text-sm font-semibold text-white"
+            disabled={!isAdminMode}
+            className="rounded-full bg-stone-950 px-4 py-3 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:bg-stone-400"
           >
             Импорт JSON
           </button>
@@ -692,7 +751,7 @@ export function RatesSettingsForm() {
             {importMessage}
           </p>
         ) : null}
-        {preImportSnapshot ? (
+        {preImportSnapshot && isAdminMode ? (
           <button
             type="button"
             onClick={handleRevertImport}
@@ -750,12 +809,16 @@ export function RatesSettingsForm() {
               Метод распределения расходов
               <select
                 value={settings.allocation_method}
+                disabled={!isAdminMode}
                 onChange={(event) =>
                   updateSettings({
                     allocation_method: event.target.value === "value" ? "value" : "quantity"
                   })
                 }
-                className="mt-2 w-full rounded-2xl border border-stone-200 bg-stone-50 px-4 py-3 text-base outline-none transition focus:border-stone-400 focus:bg-white"
+                className={clsx(
+                  "mt-2 w-full rounded-2xl border border-stone-200 bg-stone-50 px-4 py-3 text-base outline-none transition focus:border-stone-400 focus:bg-white",
+                  readOnlyFieldClass
+                )}
               >
                 <option value="quantity">По количеству</option>
                 <option value="value">По стоимости</option>
@@ -763,13 +826,30 @@ export function RatesSettingsForm() {
             </label>
           </div>
 
-          <div className="mt-4 grid grid-cols-3 gap-3">
+          <p className="mt-4 rounded-2xl bg-stone-50 px-3 py-2 text-[11px] leading-5 text-stone-600">
+            <span className="font-semibold text-stone-700">Курсы CNY / USD / EUR:</span> пустое поле
+            — при расчёте курс{" "}
+            <a
+              href="https://www.cbr.ru/"
+              target="_blank"
+              rel="noreferrer"
+              className="font-medium text-stone-800 underline-offset-2 hover:underline"
+            >
+              ЦБ РФ
+            </a>{" "}
+            (API cbr-xml-daily.ru, обновление ~раз в день). Число в поле — фиксированный курс ₽ за 1
+            {` `}
+            ед. валюты.
+          </p>
+
+          <div className="mt-3 grid grid-cols-3 gap-3">
             {(["CNY", "USD", "EUR"] as const).map((currency) => (
               <label key={currency} className="text-sm font-semibold text-stone-900">
                 Курс {currency}
                 <input
                   type="text"
                   inputMode="decimal"
+                  disabled={!isAdminMode}
                   value={
                     draftInputs[`manual_exchange_rate_${currency}`] ??
                     (settings.manual_exchange_rates[currency] !== null &&
@@ -790,7 +870,10 @@ export function RatesSettingsForm() {
                     });
                   }}
                   placeholder="ЦБ"
-                  className="mt-2 w-full rounded-2xl border border-stone-200 bg-stone-50 px-3 py-3 text-base outline-none transition focus:border-stone-400 focus:bg-white"
+                  className={clsx(
+                    "mt-2 w-full rounded-2xl border border-stone-200 bg-stone-50 px-3 py-3 text-base outline-none transition focus:border-stone-400 focus:bg-white",
+                    readOnlyFieldClass
+                  )}
                 />
               </label>
             ))}
@@ -854,13 +937,17 @@ export function RatesSettingsForm() {
                 Тип перевозки
                 <select
                   value={getSelectedTransport(group)}
+                  disabled={!isAdminMode}
                   onChange={(event) => {
                     setSelectedTransportByRoute((current) => ({
                       ...current,
                       [group.route_code]: event.target.value as TransportType
                     }));
                   }}
-                  className="mt-2 w-full rounded-2xl border border-stone-200 bg-stone-50 px-4 py-3 text-base outline-none transition focus:border-stone-400 focus:bg-white"
+                  className={clsx(
+                    "mt-2 w-full rounded-2xl border border-stone-200 bg-stone-50 px-4 py-3 text-base outline-none transition focus:border-stone-400 focus:bg-white",
+                    readOnlyFieldClass
+                  )}
                 >
                   {TRANSPORT_TYPE_OPTIONS.map((transport) => (
                     <option key={transport.code} value={transport.code}>

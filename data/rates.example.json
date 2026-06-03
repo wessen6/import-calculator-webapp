@@ -143,7 +143,7 @@
     },
     {
       "route_code": "qingdao-novosibirsk",
-      "route_label": "Китай, Циндао → Новосибирск",
+      "route_label": "Китай, Циндао → НСК",
       "transport_type": "container_40ft",
       "transport_label": "Контейнер 40HC",
       "pre_border_expenses_foreign": 26500,
@@ -159,7 +159,7 @@
     },
     {
       "route_code": "qingdao-novosibirsk",
-      "route_label": "Китай, Циндао → Новосибирск",
+      "route_label": "Китай, Циндао → НСК",
       "transport_type": "container_20ft",
       "transport_label": "Контейнер 20HC",
       "pre_border_expenses_foreign": 26500,
@@ -175,7 +175,7 @@
     },
     {
       "route_code": "qingdao-novosibirsk",
-      "route_label": "Китай, Циндао → Новосибирск",
+      "route_label": "Китай, Циндао → НСК",
       "transport_type": "truck",
       "transport_label": "Фура",
       "pre_border_expenses_foreign": 26500,
@@ -191,7 +191,7 @@
     },
     {
       "route_code": "qingdao-novosibirsk",
-      "route_label": "Китай, Циндао → Новосибирск",
+      "route_label": "Китай, Циндао → НСК",
       "transport_type": "half_truck",
       "transport_label": "Пол фуры",
       "pre_border_expenses_foreign": 26500,
