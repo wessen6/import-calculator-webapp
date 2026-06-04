@@ -6,6 +6,25 @@
 
 ---
 
+## 2026-06-03 (prod live + UI ставок)
+
+### Добавлено
+
+- Prod https://imcalc.wessen.online и n8n на https://n8n.wessen.online (Beget VPS, Traefik + systemd).
+- Ставки: режим «только просмотр», вход «Войти», компактная панель администратора.
+- Подсказка по курсам (ЦБ vs ручной) в блоке «Общие ставки».
+
+### Изменено
+
+- Маршрут «Новосибирск» → «НСК» в seed/defaults (`lib/rates-config.ts`, `data/rates.*.json`).
+- Desktop layout RUB+НДС на `/settings/rates`; `EmptyState` — белый текст CTA.
+
+### Исправлено
+
+- Traefik 502 → imcalc `-H 0.0.0.0`; ссылки `<a>` не перебивают `text-white` на кнопках.
+
+---
+
 ## 2026-06-02 (prod Beget + Traefik)
 
 ### Добавлено

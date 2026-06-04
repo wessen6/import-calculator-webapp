@@ -9,6 +9,7 @@
 - [x] **Деплой на VPS (Beget)** — https://imcalc.wessen.online, Traefik + systemd, `APP_DATA_DIR`
   - [x] Доки: `deploy/DEPLOY.md`, `traefik-imcalc.yml`, `update-imcalc.sh`
   - [ ] cron бэкапа ставок на VPS
+  - [ ] Переименовать маршрут «Новосибирск» → «НСК» в prod `rates.json` (seed уже обновлён)
   - [ ] OCR/OpenRouter ключи в prod `.env.local`
 - [ ] **Закрыть публичный `GET /api/rates`** — auth / API key (сейчас OK для MVP)
 
