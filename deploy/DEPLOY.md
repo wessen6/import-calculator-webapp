@@ -215,6 +215,16 @@ chmod +x /usr/local/bin/update-imcalc.sh
 
 ## Бэкап ставок (cron)
 
+Один раз на VPS (из свежего `git pull`):
+
+```bash
+sudo bash /var/www/imcalc/app/deploy/setup-backup-cron.sh
+```
+
+Скрипт копирует `backup-rates.sh` в `/usr/local/bin/imcalc-backup-rates.sh`, добавляет cron `03:15`, делает пробный бэкап в `/var/backups/imcalc`.
+
+Вручную (эквивалент):
+
 ```bash
 cp deploy/backup-rates.sh /usr/local/bin/imcalc-backup-rates.sh
 chmod +x /usr/local/bin/imcalc-backup-rates.sh
@@ -224,6 +234,48 @@ crontab -e
 ```cron
 15 3 * * * /usr/local/bin/imcalc-backup-rates.sh >> /var/log/imcalc-backup.log 2>&1
 ```
+
+---
+
+## Маршрут НСК на prod
+
+После `git pull` + `update-imcalc.sh` приложение при первом `GET /api/rates` переименует в `rates.json` старые подписи с «Новосибирск» → «Китай, Циндао → НСК» (с бэкапом в `rates.backup.json`).
+
+Проверка:
+
+```bash
+curl -s https://imcalc.wessen.online/api/rates | jq '.configs[] | select(.route_code=="qingdao-novosibirsk") | .route_label' | sort -u
+```
+
+Ожидается только `"Китай, Циндао → НСК"`.
+
+Без деплоя кода: `sudo bash deploy/migrate-nsk-rates.sh` (нужен `jq`), затем `systemctl restart imcalc`.
+
+---
+
+## OCR / OpenRouter (инвойс)
+
+Ключи только в `/var/www/imcalc/app/.env.local` (не в git):
+
+| Переменная | Где взять |
+|------------|-----------|
+| `OCR_SPACE_API_KEY` | https://ocr.space/ocrapi |
+| `OPENROUTER_API_KEY` | https://openrouter.ai/keys |
+| `OPENROUTER_MODEL` | по умолчанию `openai/gpt-4o-mini` |
+
+```bash
+nano /var/www/imcalc/app/.env.local
+chmod 600 /var/www/imcalc/app/.env.local
+systemctl restart imcalc
+```
+
+Проверка (без загрузки файла — только конфиг API):
+
+```bash
+curl -s -o /dev/null -w "%{http_code}\n" -X POST https://imcalc.wessen.online/api/extract-file-data
+```
+
+`503` + текст про ключи — переменные пустые; `400`/`422` — ключи подхватились, нужен multipart с файлом.
 
 ---
 
@@ -246,5 +298,6 @@ crontab -e
 - [x] `npm run build`, systemd `imcalc` active
 - [x] `traefik_dynamic/imcalc.yml`, file provider в traefik
 - [x] `https://imcalc.wessen.online/calculations` — 200
-- [ ] cron бэкапа ставок
-- [ ] OCR/OpenRouter ключи (по необходимости)
+- [ ] cron бэкапа: `deploy/setup-backup-cron.sh`
+- [ ] НСК в prod `rates.json` (авто после деплоя с миграцией, см. выше)
+- [ ] OCR/OpenRouter ключи в `.env.local` (по необходимости)

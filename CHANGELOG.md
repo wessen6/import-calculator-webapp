@@ -6,6 +6,20 @@
 
 ---
 
+## 2026-06-04 (prod ops: НСК, бэкап, OCR)
+
+### Добавлено
+
+- Автомиграция «Новосибирск» → «НСК» при чтении `rates.json` (`migrateRatesPayload` в `lib/rates-payload.ts`).
+- `deploy/setup-backup-cron.sh`, `deploy/migrate-nsk-rates.sh` (опционально на VPS).
+- В `deploy/DEPLOY.md`: разделы НСК, OCR/OpenRouter, установка cron одной командой.
+
+### Изменено
+
+- `deploy/backup-rates.sh` — корректная ротация снимков (`rates-[0-9]*` vs `rates-backup-[0-9]*`).
+
+---
+
 ## 2026-06-03 (prod live + UI ставок)
 
 ### Добавлено

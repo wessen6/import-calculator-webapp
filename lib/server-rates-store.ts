@@ -4,6 +4,7 @@ import {
   buildDefaultRatesPayload,
   getDefaultRateConfigs,
   getDefaultRateSettings,
+  migrateRatesPayload,
   normalizeRatesPayload,
   type RatesPayload
 } from "./rates-payload";
@@ -59,6 +60,11 @@ export async function readRatesPayload(): Promise<RatesPayload> {
   try {
     const raw = await fs.readFile(ratesFilePath, "utf8");
     const payload = normalizeRatesPayload(JSON.parse(raw));
+    const { payload: migrated, changed } = migrateRatesPayload(payload);
+
+    if (changed) {
+      return writeRatesPayload(migrated);
+    }
 
     if (payload.updated_at) {
       return payload;

@@ -271,6 +271,28 @@ export function normalizeRatesPayload(value: unknown): RatesPayload {
   };
 }
 
+const NSK_ROUTE_LABEL = "Китай, Циндао → НСК";
+
+/** One-time prod fix: legacy «Новосибирск» labels → «НСК» for qingdao-novosibirsk. */
+export function migrateRatesPayload(payload: RatesPayload): { payload: RatesPayload; changed: boolean } {
+  let changed = false;
+
+  const configs = payload.configs.map((config) => {
+    if (config.route_code !== "qingdao-novosibirsk" || config.route_label === NSK_ROUTE_LABEL) {
+      return config;
+    }
+
+    if (!config.route_label.includes("Новосибирск")) {
+      return config;
+    }
+
+    changed = true;
+    return { ...config, route_label: NSK_ROUTE_LABEL };
+  });
+
+  return changed ? { payload: { ...payload, configs }, changed } : { payload, changed: false };
+}
+
 export function buildDefaultRatesPayload(): RatesPayload {
   return {
     settings: getDefaultRateSettings(),

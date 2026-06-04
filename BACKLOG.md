@@ -8,9 +8,9 @@
 - [ ] **Автоматизация обновления ставок** — cron/скрипт → `PUT /api/rates` или sync из внешней «базы источник»
 - [x] **Деплой на VPS (Beget)** — https://imcalc.wessen.online, Traefik + systemd, `APP_DATA_DIR`
   - [x] Доки: `deploy/DEPLOY.md`, `traefik-imcalc.yml`, `update-imcalc.sh`
-  - [ ] cron бэкапа ставок на VPS
-  - [ ] Переименовать маршрут «Новосибирск» → «НСК» в prod `rates.json` (seed уже обновлён)
-  - [ ] OCR/OpenRouter ключи в prod `.env.local`
+  - [ ] cron бэкапа ставок на VPS (`deploy/setup-backup-cron.sh` — в git, установить на сервере)
+  - [ ] НСК на prod: `git push` → `update-imcalc.sh` → авто при `GET /api/rates` (или `migrate-nsk-rates.sh`)
+  - [ ] OCR/OpenRouter ключи в prod `.env.local` (см. `deploy/DEPLOY.md` § OCR)
 - [ ] **Закрыть публичный `GET /api/rates`** — auth / API key (сейчас OK для MVP)
 
 ## Продукт
