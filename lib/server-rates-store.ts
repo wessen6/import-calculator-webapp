@@ -105,3 +105,31 @@ export async function writeRatesPayload(payload: RatesPayload): Promise<RatesPay
 
   return payloadWithTimestamp;
 }
+
+export class RatesBackupNotFoundError extends Error {
+  constructor() {
+    super("BACKUP_NOT_FOUND");
+    this.name = "RatesBackupNotFoundError";
+  }
+}
+
+export async function readRatesBackup(): Promise<RatesPayload | null> {
+  try {
+    await fs.access(ratesBackupFilePath);
+    const raw = await fs.readFile(ratesBackupFilePath, "utf8");
+    return normalizeRatesPayload(JSON.parse(raw));
+  } catch {
+    return null;
+  }
+}
+
+/** Восстанавливает ставки из rates.backup.json (снимок до последнего сохранения). */
+export async function restoreRatesFromBackup(): Promise<RatesPayload> {
+  const backup = await readRatesBackup();
+
+  if (!backup) {
+    throw new RatesBackupNotFoundError();
+  }
+
+  return writeRatesPayload(backup);
+}

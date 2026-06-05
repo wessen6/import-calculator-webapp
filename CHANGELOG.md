@@ -6,6 +6,15 @@
 
 ---
 
+## 2026-06-05 (откат ставок из backup)
+
+### Добавлено
+
+- `readRatesBackup` / `restoreRatesFromBackup` в `server-rates-store`.
+- `POST /api/rates/restore` и кнопка «Восстановить из backup» в форме ставок.
+
+---
+
 ## 2026-06-05 (UI «+ Маршрут» в ставках)
 
 ### Добавлено

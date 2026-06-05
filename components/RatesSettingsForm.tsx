@@ -426,6 +426,61 @@ export function RatesSettingsForm() {
     }
   }
 
+  async function handleRestoreFromBackup() {
+    if (!isAdminMode) {
+      return;
+    }
+
+    if (!ownerPassword.trim()) {
+      setImportMessageTone("error");
+      setImportMessage("Введите пароль владельца.");
+      return;
+    }
+
+    const confirmed = window.confirm(
+      "Восстановить ставки из серверной резервной копии?\n\nБудут подставлены значения с момента перед последним сохранением. Текущие несохранённые правки в форме будут потеряны."
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    setError(null);
+    clearNotice();
+    setPendingImport(null);
+    setPreImportSnapshot(null);
+
+    const response = await fetch("/api/rates/restore", {
+      method: "POST",
+      headers: {
+        "x-owner-password": ownerPassword
+      }
+    });
+    const data = (await response.json()) as RatesApiResponse;
+
+    if (!response.ok) {
+      setImportMessageTone("error");
+      setImportMessage(
+        data.error ?? "Не удалось восстановить ставки из резервной копии."
+      );
+      return;
+    }
+
+    const normalized = normalizeRatesPayload({
+      settings: data.settings,
+      configs: data.configs,
+      updated_at: data.updated_at
+    });
+    setSettings(normalized.settings);
+    setConfigs(normalized.configs);
+    setUpdatedAt(normalized.updated_at ?? null);
+    setDraftInputs({});
+    setOwnerVerified(true);
+    showSavedNotice(normalized.updated_at ?? new Date().toISOString());
+    setImportMessageTone("success");
+    setImportMessage("Ставки восстановлены из резервной копии сервера.");
+  }
+
   async function persistRates(options?: { loginOnly?: boolean }): Promise<string | null> {
     setError(null);
     if (!settings) {
@@ -904,6 +959,20 @@ export function RatesSettingsForm() {
           >
             Вернуть как было (до импорта)
           </button>
+        ) : null}
+        {isAdminMode ? (
+          <button
+            type="button"
+            onClick={() => void handleRestoreFromBackup()}
+            className="mt-3 w-full rounded-full border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-900"
+          >
+            Восстановить из backup
+          </button>
+        ) : null}
+        {isAdminMode ? (
+          <p className="mt-2 text-[11px] leading-snug text-stone-500">
+            Backup — снимок ставок перед последним сохранением (файл rates.backup.json на сервере).
+          </p>
         ) : null}
       </section>
 
