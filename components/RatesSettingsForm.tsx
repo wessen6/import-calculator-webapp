@@ -5,10 +5,16 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { formatDateTime } from "@/lib/format";
 import { getEffectiveConfigUpdatedAt } from "@/lib/rates-display";
 import { TRANSPORT_TYPE_OPTIONS } from "@/lib/rates-config";
-import { mergeRouteMetas } from "@/lib/rates-route-registry";
 import {
+  mergeRouteMetas,
+  normalizeRouteLabel,
+  routeCodeFromRouteLabel
+} from "@/lib/rates-route-registry";
+import {
+  addRouteConfigs,
   isRateConfigQuotable,
   mergeRatesPayload,
+  normalizeRouteCode,
   normalizeRatesPayload,
   type StoredRateConfig,
   type StoredRateSettings
@@ -128,6 +134,10 @@ export function RatesSettingsForm() {
   const [selectedTransportByRoute, setSelectedTransportByRoute] = useState<
     Partial<Record<RouteCode, TransportType>>
   >({});
+  const [newRouteLabel, setNewRouteLabel] = useState("");
+  const [newRouteCode, setNewRouteCode] = useState("");
+  const [newRouteCodeTouched, setNewRouteCodeTouched] = useState(false);
+  const [addRouteMessage, setAddRouteMessage] = useState<string | null>(null);
 
   const routeGroups = useMemo(() => groupConfigsByRoute(configs), [configs]);
   const isAdminMode = ownerVerified && ownerPassword.length > 0;
@@ -285,7 +295,65 @@ export function RatesSettingsForm() {
     setOwnerPassword("");
     setOwnerVerified(false);
     setPendingImport(null);
+    setNewRouteLabel("");
+    setNewRouteCode("");
+    setNewRouteCodeTouched(false);
+    setAddRouteMessage(null);
     clearNotice();
+  }
+
+  function handleNewRouteLabelChange(value: string) {
+    setNewRouteLabel(value);
+    setAddRouteMessage(null);
+
+    if (!newRouteCodeTouched) {
+      setNewRouteCode(routeCodeFromRouteLabel(value));
+    }
+  }
+
+  function handleNewRouteLabelBlur() {
+    if (!newRouteLabel.trim()) {
+      return;
+    }
+
+    const normalized = normalizeRouteLabel(newRouteLabel);
+    setNewRouteLabel(normalized);
+
+    if (!newRouteCodeTouched) {
+      setNewRouteCode(routeCodeFromRouteLabel(normalized));
+    }
+  }
+
+  function handleAddRoute() {
+    if (!isAdminMode) {
+      return;
+    }
+
+    const route_label = normalizeRouteLabel(newRouteLabel);
+
+    const result = addRouteConfigs(configs, {
+      route_code: newRouteCode,
+      route_label
+    });
+
+    if (!result.ok) {
+      setAddRouteMessage(result.error);
+      return;
+    }
+
+    setConfigs(result.configs);
+    setSelectedTransportByRoute((current) => ({
+      ...current,
+      [result.route_code]: "container_40ft"
+    }));
+    setNewRouteLabel("");
+    setNewRouteCode("");
+    setNewRouteCodeTouched(false);
+    setAddRouteMessage(null);
+    setImportMessageTone("info");
+    setImportMessage(
+      `Маршрут «${result.route_label}» добавлен в форму. Заполните ставки и нажмите «Сохранить».`
+    );
   }
 
   function renderLoginBar(id: string) {
@@ -590,14 +658,14 @@ export function RatesSettingsForm() {
   function renderRouteConfigFields(config: StoredRateConfig) {
     return (
       <>
-        <div className="mt-4 grid grid-cols-2 gap-x-3 gap-y-2 lg:grid-cols-1">
-          <label className="self-end text-sm font-semibold leading-tight text-stone-900">
+        <div className="mt-4 grid grid-cols-2 gap-x-3 gap-y-2 lg:grid-cols-1 lg:gap-4">
+          <label className="order-1 self-end text-sm font-semibold leading-tight text-stone-900 lg:order-1 lg:self-auto">
             До границы
           </label>
-          <label className="self-end text-sm font-semibold leading-tight text-stone-900">
+          <label className="order-2 self-end text-sm font-semibold leading-tight text-stone-900 lg:order-3 lg:self-auto">
             Прочие до границы
           </label>
-          <div className="flex">
+          <div className="order-3 flex lg:order-2 lg:mt-2">
             <input
               type="text"
               inputMode="decimal"
@@ -630,7 +698,7 @@ export function RatesSettingsForm() {
               USD
             </span>
           </div>
-          <div className="flex">
+          <div className="order-4 flex lg:order-4 lg:mt-2">
             <input
               type="text"
               inputMode="decimal"
@@ -727,12 +795,7 @@ export function RatesSettingsForm() {
             })}
           </div>
           <div className="col-span-2 lg:col-span-1">
-            <label className="text-sm font-semibold text-stone-900">
-              Прочие в РФ
-              <span className="ml-1 font-normal text-stone-500">
-                (страховка, досмотр, раскредитация)
-              </span>
-            </label>
+            <label className="text-sm font-semibold text-stone-900">Прочие в РФ</label>
             {renderRubVatControl({
               value: config.other_russian_expenses_rub ?? 0,
               vatMode: config.other_russian_expenses_vat_mode ?? "without_vat",
@@ -994,6 +1057,56 @@ export function RatesSettingsForm() {
               })}
             </div>
           </div>
+        </section>
+      ) : null}
+
+      {isAdminMode ? (
+        <section className="rounded-[1.5rem] border border-dashed border-stone-300 bg-stone-50/60 p-4 shadow-sm">
+          <h2 className="text-sm font-semibold text-stone-950">Новый маршрут</h2>
+          <p className="mt-1 text-xs leading-5 text-stone-500">
+            «Китай, Циндао» → код <span className="font-mono">qingdao-…</span> (Владивосток →
+            vladivostok, ВЛД → vld). Можно вводить через тире — при потере фокуса станет стрелка →.
+          </p>
+          <div className="mt-3 grid gap-3 sm:grid-cols-2">
+            <label className="text-sm font-semibold text-stone-900">
+              Название
+              <input
+                type="text"
+                value={newRouteLabel}
+                onChange={(event) => handleNewRouteLabelChange(event.target.value)}
+                onBlur={handleNewRouteLabelBlur}
+                placeholder="Китай, Циндао → Владивосток"
+                className="mt-2 w-full rounded-2xl border border-stone-200 bg-white px-3 py-3 text-base outline-none transition focus:border-stone-400"
+              />
+            </label>
+            <label className="text-sm font-semibold text-stone-900">
+              Код
+              <input
+                type="text"
+                value={newRouteCode}
+                onChange={(event) => {
+                  setNewRouteCodeTouched(true);
+                  setNewRouteCode(normalizeRouteCode(event.target.value));
+                  setAddRouteMessage(null);
+                }}
+                placeholder="qingdao-vladivostok"
+                className="mt-2 w-full rounded-2xl border border-stone-200 bg-white px-3 py-3 font-mono text-sm outline-none transition focus:border-stone-400"
+              />
+            </label>
+          </div>
+          {addRouteMessage ? (
+            <p className="mt-2 rounded-2xl bg-rose-50 px-3 py-2 text-sm text-rose-700">
+              {addRouteMessage}
+            </p>
+          ) : null}
+          <button
+            type="button"
+            disabled={!newRouteLabel.trim() || !newRouteCode.trim()}
+            onClick={handleAddRoute}
+            className="mt-3 w-full rounded-full bg-stone-950 px-4 py-3 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:bg-stone-400 sm:w-auto"
+          >
+            + Маршрут
+          </button>
         </section>
       ) : null}
 

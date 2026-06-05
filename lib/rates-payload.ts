@@ -541,3 +541,64 @@ export function buildDefaultRatesPayload(): RatesPayload {
     updated_at: new Date().toISOString()
   });
 }
+
+export function normalizeRouteCode(code: string) {
+  return code
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 48);
+}
+
+export function isValidRouteCode(code: string) {
+  return /^[a-z][a-z0-9]*(-[a-z0-9]+)*$/.test(code) && code.length >= 2;
+}
+
+export function createRouteConfigs(routeCode: string, routeLabel: string): StoredRateConfig[] {
+  return TRANSPORT_TYPE_OPTIONS.map((transport) => {
+    const config = createEmptyStoredConfig(
+      routeCode,
+      routeLabel,
+      transport.code,
+      transport.label
+    );
+
+    return isTransportEnabledByDefault(transport.code) ? { ...config, enabled: true } : config;
+  });
+}
+
+export type AddRouteResult =
+  | { ok: true; configs: StoredRateConfig[]; route_code: string; route_label: string }
+  | { ok: false; error: string };
+
+/** Добавляет пустой маршрут со всеми типами перевозки (40HC enabled, остальные disabled). */
+export function addRouteConfigs(
+  existingConfigs: StoredRateConfig[],
+  input: { route_code: string; route_label: string }
+): AddRouteResult {
+  const route_code = normalizeRouteCode(input.route_code);
+  const route_label = input.route_label.trim();
+
+  if (!route_label) {
+    return { ok: false, error: "Введите название маршрута." };
+  }
+
+  if (!isValidRouteCode(route_code)) {
+    return {
+      ok: false,
+      error: "Код маршрута: латиница, цифры и дефис (например qingdao-vladivostok)."
+    };
+  }
+
+  if (existingConfigs.some((config) => config.route_code === route_code)) {
+    return { ok: false, error: `Маршрут «${route_code}» уже есть.` };
+  }
+
+  return {
+    ok: true,
+    route_code,
+    route_label,
+    configs: [...existingConfigs, ...createRouteConfigs(route_code, route_label)]
+  };
+}

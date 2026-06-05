@@ -577,7 +577,7 @@ export function NewCalculationForm() {
               className={readOnlyFieldClassName}
             />
             <p className="mt-1 text-xs text-stone-400">
-              RUB, по ставкам админки с НДС где применимо + банковский %
+              RUB, по ставкам админки с НДС где применимо
             </p>
           </div>
         </div>

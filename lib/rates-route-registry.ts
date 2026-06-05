@@ -24,6 +24,146 @@ export function slugFromRouteLabel(label: string) {
     .slice(0, 48);
 }
 
+const CYRILLIC_TO_LATIN: Record<string, string> = {
+  а: "a",
+  б: "b",
+  в: "v",
+  г: "g",
+  д: "d",
+  е: "e",
+  ё: "yo",
+  ж: "zh",
+  з: "z",
+  и: "i",
+  й: "y",
+  к: "k",
+  л: "l",
+  м: "m",
+  н: "n",
+  о: "o",
+  п: "p",
+  р: "r",
+  с: "s",
+  т: "t",
+  у: "u",
+  ф: "f",
+  х: "h",
+  ц: "ts",
+  ч: "ch",
+  ш: "sh",
+  щ: "sch",
+  ъ: "",
+  ы: "y",
+  ь: "",
+  э: "e",
+  ю: "yu",
+  я: "ya"
+};
+
+function transliterateToLatin(value: string) {
+  return value
+    .toLowerCase()
+    .split("")
+    .map((char) => CYRILLIC_TO_LATIN[char] ?? char)
+    .join("");
+}
+
+/** Латинский slug из произвольной строки (fallback для нестандартных маршрутов). */
+export function latinSlugFromRouteLabel(label: string) {
+  return transliterateToLatin(label)
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 48);
+}
+
+const QINGDAO_ORIGIN_LABEL = "Китай, Циндао";
+
+/** Разбор «Китай, Циндао … Город» (тире, стрелка или пробел). */
+export function parseQingdaoRouteLabel(label: string) {
+  const trimmed = label.trim();
+  const match = trimmed.match(/^китай,?\s*циндао\s*(?:[-–—>→]+\s*|\s+)(.+)$/i);
+
+  if (!match) {
+    return null;
+  }
+
+  return {
+    origin: QINGDAO_ORIGIN_LABEL,
+    destination: match[1].trim()
+  };
+}
+
+/** Синонимы города назначения → суффикс route_code после qingdao-. */
+const DESTINATION_TO_CODE: Record<string, string> = {
+  владивосток: "vladivostok",
+  влд: "vld",
+  спб: "spb",
+  "санкт-петербург": "spb",
+  петербург: "spb",
+  мск: "msk",
+  москва: "msk",
+  новосибирск: "novosibirsk",
+  нск: "novosibirsk",
+  екб: "ekb",
+  екатеринбург: "ekb",
+  казань: "kazan"
+};
+
+for (const route of BUILTIN_ROUTE_METAS) {
+  if (!route.code.startsWith("qingdao-")) {
+    continue;
+  }
+
+  const parsed = parseQingdaoRouteLabel(route.label);
+
+  if (parsed) {
+    DESTINATION_TO_CODE[parsed.destination.toLowerCase()] = route.code.slice("qingdao-".length);
+  }
+}
+
+function destinationToCode(destination: string) {
+  const trimmed = destination.trim();
+
+  if (!trimmed) {
+    return "";
+  }
+
+  const mapped = DESTINATION_TO_CODE[trimmed.toLowerCase()];
+
+  if (mapped) {
+    return mapped;
+  }
+
+  return latinSlugFromRouteLabel(trimmed);
+}
+
+/** Единый вид подписи: «Китай, Циндао → Владивосток». */
+export function normalizeRouteLabel(label: string) {
+  const parsed = parseQingdaoRouteLabel(label);
+
+  if (parsed) {
+    return `${parsed.origin} → ${parsed.destination}`;
+  }
+
+  return label.trim();
+}
+
+/**
+ * route_code для маршрутов из Циндао: qingdao-vladivostok.
+ * «Китай, Циндао» → всегда qingdao; город — из словаря или транслит.
+ */
+export function routeCodeFromRouteLabel(label: string) {
+  const parsed = parseQingdaoRouteLabel(label);
+
+  if (!parsed) {
+    return latinSlugFromRouteLabel(label);
+  }
+
+  const suffix = destinationToCode(parsed.destination);
+
+  return suffix ? `qingdao-${suffix}` : "qingdao";
+}
+
 export function getBuiltinRouteMeta(code: string) {
   return BUILTIN_ROUTE_METAS.find((route) => route.code === code);
 }
