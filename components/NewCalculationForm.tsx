@@ -367,14 +367,24 @@ export function NewCalculationForm() {
   const parsedQuantity = parseDecimalString(quantity);
   const parsedUnitPrice = parseDecimalString(unitPrice);
   const invoiceTotalRub =
-    selectedExchangeRate !== null && parsedQuantity !== null && parsedUnitPrice !== null
+    selectedExchangeRate !== null &&
+    Number.isFinite(selectedExchangeRate) &&
+    parsedQuantity !== null &&
+    parsedUnitPrice !== null
       ? parsedQuantity * parsedUnitPrice * selectedExchangeRate
       : null;
   const fixedRussianExpensesRub =
     selectedRoute && rateSettings ? getFixedRussianExpensesRub(rateSettings, selectedRoute) : 0;
   const bankFeeRub =
-    invoiceTotalRub !== null && rateSettings ? invoiceTotalRub * rateSettings.bank_fee_rate : 0;
-  const russianExpensesWithBankRub = fixedRussianExpensesRub + bankFeeRub;
+    invoiceTotalRub !== null && Number.isFinite(invoiceTotalRub) && rateSettings
+      ? invoiceTotalRub * rateSettings.bank_fee_rate
+      : 0;
+  const russianExpensesWithBankRub = Number.isFinite(fixedRussianExpensesRub)
+    ? fixedRussianExpensesRub + (Number.isFinite(bankFeeRub) ? bankFeeRub : 0)
+    : 0;
+  const russianExpensesDisplay = Number.isFinite(russianExpensesWithBankRub)
+    ? formatRub(Math.round(russianExpensesWithBankRub * 100) / 100)
+    : "";
   const getFieldClassName = (field: HighlightedField) =>
     `mt-2 w-full rounded-2xl border px-4 py-3 text-base outline-none transition-all duration-300 ease-out ${
       highlightedFields.includes(field)
@@ -576,12 +586,8 @@ export function NewCalculationForm() {
               key={`${selectedRoute?.route_code ?? "route"}-rf`}
               id="fixed_russian_expenses_rub"
               name="fixed_russian_expenses_rub"
-              type="number"
-              min="0"
-              step="0.01"
-              value={
-                Math.round(russianExpensesWithBankRub * 100) / 100
-              }
+              type="text"
+              value={russianExpensesDisplay}
               readOnly
               className={readOnlyFieldClassName}
             />
