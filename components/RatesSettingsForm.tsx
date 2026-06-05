@@ -14,7 +14,13 @@ import {
   type StoredRateSettings
 } from "@/lib/rates-payload";
 import { useHeaderNotice } from "@/components/HeaderNotice";
+import { RatesImportPreview } from "@/components/RatesImportPreview";
 import { useRatesAdmin } from "@/components/RatesAdminContext";
+import {
+  buildRatesImportDiff,
+  getPatchConfigKeys,
+  type RatesImportDiff
+} from "@/lib/rates-import-diff";
 import { vatModeLabel } from "@/lib/rates-vat";
 import type { RouteCode, TransportType } from "@/lib/types";
 
@@ -98,6 +104,12 @@ type FormSnapshot = {
   updatedAt: string | null;
 };
 
+type PendingImport = {
+  fileName: string;
+  merged: ReturnType<typeof normalizeRatesPayload>;
+  diff: RatesImportDiff;
+};
+
 export function RatesSettingsForm() {
   const importInputRef = useRef<HTMLInputElement | null>(null);
   const [settings, setSettings] = useState<StoredRateSettings | null>(null);
@@ -110,6 +122,7 @@ export function RatesSettingsForm() {
   const { showSavedNotice, clearNotice } = useHeaderNotice();
   const { setIsAdminMode: setHeaderAdminMode, setActions: setHeaderAdminActions } = useRatesAdmin();
   const [preImportSnapshot, setPreImportSnapshot] = useState<FormSnapshot | null>(null);
+  const [pendingImport, setPendingImport] = useState<PendingImport | null>(null);
   const [updatedAt, setUpdatedAt] = useState<string | null>(null);
   const [draftInputs, setDraftInputs] = useState<Record<string, string>>({});
   const [selectedTransportByRoute, setSelectedTransportByRoute] = useState<
@@ -271,6 +284,7 @@ export function RatesSettingsForm() {
   function handleOwnerExit() {
     setOwnerPassword("");
     setOwnerVerified(false);
+    setPendingImport(null);
     clearNotice();
   }
 
@@ -430,8 +444,46 @@ export function RatesSettingsForm() {
     setUpdatedAt(preImportSnapshot.updatedAt);
     setDraftInputs({});
     setPreImportSnapshot(null);
+    setPendingImport(null);
     setImportMessageTone("info");
     setImportMessage("Импорт отменён. Восстановлены значения до загрузки файла.");
+  }
+
+  function handleCancelImportPreview() {
+    setPendingImport(null);
+    setImportMessageTone("info");
+    setImportMessage("Импорт отменён.");
+  }
+
+  function handleApplyImportPreview() {
+    if (!pendingImport) {
+      return;
+    }
+
+    if (!settings) {
+      setImportMessageTone("error");
+      setImportMessage("Нет данных для применения импорта.");
+      return;
+    }
+
+    setPreImportSnapshot({
+      settings,
+      configs,
+      updatedAt
+    });
+
+    const { merged } = pendingImport;
+    setSettings(merged.settings);
+    setConfigs(merged.configs);
+    setUpdatedAt(merged.updated_at ?? null);
+    setDraftInputs({});
+    setPendingImport(null);
+    setImportMessageTone("info");
+    setImportMessage(
+      pendingImport.diff.hasChanges
+        ? "Импорт применён в форму. Проверьте значения и нажмите «Сохранить»."
+        : "Файл применён без изменений. Можно сохранить или вернуть как было."
+    );
   }
 
   async function handleImportRates(file: File | undefined) {
@@ -445,6 +497,7 @@ export function RatesSettingsForm() {
 
     setError(null);
     setImportMessage(null);
+    setPendingImport(null);
     clearNotice();
 
     try {
@@ -458,30 +511,36 @@ export function RatesSettingsForm() {
         throw new Error("Неверный формат: нужны поля settings и configs.");
       }
 
-      setPreImportSnapshot({
+      const isMerge =
+        raw && typeof raw === "object" && (raw as { merge?: boolean }).merge === true;
+      const currentPayload = normalizeRatesPayload({
         settings,
         configs,
-        updatedAt
+        updated_at: updatedAt,
+        version: 2
+      });
+      const patch = normalizeRatesPayload(raw);
+      const merged = isMerge
+        ? mergeRatesPayload(currentPayload, patch)
+        : patch;
+      const diff = buildRatesImportDiff(currentPayload, merged, {
+        isMerge,
+        patchConfigKeys: isMerge ? getPatchConfigKeys(patch.configs) : undefined
       });
 
-      const patch = normalizeRatesPayload(raw);
-      const merged =
-        raw && typeof raw === "object" && (raw as { merge?: boolean }).merge === true && settings
-          ? mergeRatesPayload(
-              { settings, configs, updated_at: updatedAt, version: 2 },
-              patch
-            )
-          : patch;
-      setSettings(merged.settings);
-      setConfigs(merged.configs);
-      setUpdatedAt(merged.updated_at ?? null);
-      setDraftInputs({});
+      setPendingImport({
+        fileName: file.name,
+        merged,
+        diff
+      });
       setImportMessageTone("info");
       setImportMessage(
-        "Ставки загружены в форму. Проверьте значения и нажмите «Сохранить»."
+        diff.hasChanges
+          ? "Проверьте изменения ниже и нажмите «Применить в форму»."
+          : "Файл не содержит отличий от текущих ставок. Можно применить или отменить."
       );
     } catch (importError) {
-      setPreImportSnapshot(null);
+      setPendingImport(null);
       setImportMessageTone("error");
       setImportMessage(
         importError instanceof Error
@@ -493,6 +552,7 @@ export function RatesSettingsForm() {
 
   function handleReset() {
     clearNotice();
+    setPendingImport(null);
     fetch("/api/rates")
       .then((response) => response.json())
       .then((data: RatesApiResponse) => {
@@ -783,6 +843,15 @@ export function RatesSettingsForm() {
           </button>
         ) : null}
       </section>
+
+      {pendingImport && isAdminMode ? (
+        <RatesImportPreview
+          fileName={pendingImport.fileName}
+          diff={pendingImport.diff}
+          onApply={handleApplyImportPreview}
+          onCancel={handleCancelImportPreview}
+        />
+      ) : null}
 
       {settings ? (
         <section className="rounded-[2rem] border border-stone-200 bg-white p-4 shadow-sm">

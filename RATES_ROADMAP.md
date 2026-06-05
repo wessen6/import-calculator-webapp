@@ -28,7 +28,7 @@
 | 3 | НДС визуально в UI ставок | ✅ | подписи на desktop |
 | 4 | Пустые транспорты в «Новый расчёт» | ✅ | `hasPreBorderQuote` |
 | 4b | UI: хедер-админка, mobile layout, выравнивание полей | ✅ | `RatesHeaderAdmin`, grid |
-| 5 | Частичный merge импорта + превью diff | ⬜ | `mergeRatesPayload`, UI |
+| 5 | Частичный merge импорта + превью diff | ✅ | `mergeRatesPayload`, `rates-import-diff`, `RatesImportPreview` |
 | 6 | Откат server backup + «+ Маршрут» в админке | ⬜ | API + UI |
 | 7 | Прогон накопленных КП | ⬜ | `data/sources/` |
 | 8 | Пошлина по ТН ВЭД | ⬜ | будущее |
