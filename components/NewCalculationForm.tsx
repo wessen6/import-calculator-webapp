@@ -4,8 +4,13 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { formatDateTime } from "@/lib/format";
 import { getEffectiveConfigUpdatedAt } from "@/lib/rates-display";
-import { TRANSPORT_TYPE_OPTIONS } from "@/lib/rates-config";
-import type { StoredRateConfig, StoredRateSettings } from "@/lib/rates-payload";
+import {
+  hasPreBorderQuote,
+  isRateSelectableInCalculation,
+  normalizeRatesPayload,
+  type StoredRateConfig,
+  type StoredRateSettings
+} from "@/lib/rates-payload";
 import { createStoredCalculation, getFixedRussianExpensesRub } from "@/lib/storage";
 import type { CurrencyCode, RouteCode, TransportType } from "@/lib/types";
 import { FileUploadZone } from "./FileUploadZone";
@@ -67,10 +72,17 @@ export function NewCalculationForm() {
   const [isSubmitButtonVisible, setIsSubmitButtonVisible] = useState(false);
   const [selectedExchangeRate, setSelectedExchangeRate] = useState<number | null>(null);
   const [usdExchangeRate, setUsdExchangeRate] = useState<number | null>(null);
-  const routeOptions = rateConfigs.filter(
+  const selectableConfigs = rateConfigs.filter(isRateSelectableInCalculation);
+  const routeOptions = selectableConfigs.filter(
     (route, index, routes) =>
       routes.findIndex((candidate) => candidate.route_code === route.route_code) === index
   );
+  const transportOptionsForRoute = selectedRoute
+    ? selectableConfigs.filter(
+        (config) =>
+          config.route_code === selectedRoute.route_code && hasPreBorderQuote(config)
+      )
+    : [];
 
   function triggerFieldHighlight(fields: HighlightedField[]) {
     if (highlightTimeoutRef.current) {
@@ -88,10 +100,11 @@ export function NewCalculationForm() {
     fetch("/api/rates")
       .then((response) => response.json())
       .then((data: RatesApiResponse) => {
-        const configs = data.configs ?? [];
-        setRateConfigs(configs);
-        setRateSettings(data.settings ?? null);
-        setRatesUpdatedAt(data.updated_at ?? null);
+        const normalized = normalizeRatesPayload(data);
+        const configs = normalized.configs.filter(isRateSelectableInCalculation);
+        setRateConfigs(normalized.configs);
+        setRateSettings(normalized.settings);
+        setRatesUpdatedAt(normalized.updated_at ?? null);
         setSelectedRoute(configs[0] ?? null);
       })
       .catch(() => setFormError("Не удалось загрузить ставки маршрутов."));
@@ -469,10 +482,11 @@ export function NewCalculationForm() {
             name="transport_type"
             value={selectedRoute?.transport_type ?? "container_40ft"}
             onChange={(event) => {
-              const route = rateConfigs.find(
+              const route = selectableConfigs.find(
                 (option) =>
                   option.route_code === selectedRoute?.route_code &&
-                  option.transport_type === event.target.value
+                  option.transport_type === event.target.value &&
+                  hasPreBorderQuote(option)
               );
 
               if (route) {
@@ -482,9 +496,9 @@ export function NewCalculationForm() {
             }}
             className={getFieldClassName("transport")}
           >
-            {TRANSPORT_TYPE_OPTIONS.map((transport) => (
-              <option key={transport.code} value={transport.code}>
-                {transport.label}
+            {transportOptionsForRoute.map((config) => (
+              <option key={config.transport_type} value={config.transport_type}>
+                {config.transport_label}
               </option>
             ))}
           </select>
@@ -499,11 +513,16 @@ export function NewCalculationForm() {
             name="route_code"
             value={selectedRoute?.route_code ?? ""}
             onChange={(event) => {
-              const route = rateConfigs.find(
-                (option) =>
-                  option.route_code === event.target.value &&
-                  option.transport_type === selectedRoute?.transport_type
-              );
+              const route =
+                selectableConfigs.find(
+                  (option) =>
+                    option.route_code === event.target.value &&
+                    option.transport_type === selectedRoute?.transport_type
+                ) ??
+                selectableConfigs.find(
+                  (option) =>
+                    option.route_code === event.target.value && hasPreBorderQuote(option)
+                );
               if (route) {
                 setSelectedRoute(route);
                 triggerFieldHighlight(["route"]);

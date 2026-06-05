@@ -7,7 +7,8 @@ export type CalculationStatus =
 
 export type CurrencyCode = "CNY" | "USD" | "EUR" | "RUB";
 
-export type RouteCode = "china-russia" | "qingdao-spb" | "qingdao-msk" | "qingdao-novosibirsk";
+/** Slug маршрута из rates.json (динамический список). */
+export type RouteCode = string;
 
 export type TransportType = "container_40ft" | "container_20ft" | "truck" | "half_truck";
 

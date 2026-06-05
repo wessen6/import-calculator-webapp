@@ -6,6 +6,23 @@
 
 ---
 
+## 2026-06-04 (ставки из КП: roadmap + v2)
+
+### Добавлено
+
+- `RATES_ROADMAP.md`, `docs/RATES_*.md`, `prompts/rates-from-expediter.md`.
+- Примеры КП: `data/sources/examples/` (6 файлов).
+- `npm run rates:compile` / `rates:validate` / `rates:seed`; черновик `drafts/*.source.json`.
+- JSON v2: `routes[]`, маршруты ЕКБ/Казань, `enabled`, `other_russian_expenses_rub`, `mergeRatesPayload`.
+- Импорт с `"merge": true`; подписи НДС в форме ставок.
+
+### Изменено
+
+- `RouteCode` — динамический slug; новые маршруты без правки enum.
+- «Новый расчёт» — только котировки с `enabled` / ненулевыми суммами.
+
+---
+
 ## 2026-06-04 (prod ops: НСК, бэкап, OCR)
 
 ### Добавлено

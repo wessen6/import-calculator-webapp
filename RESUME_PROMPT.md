@@ -7,13 +7,12 @@
 ```
 Продолжи Next.js import-calculator-webapp.
 
-Git: https://github.com/wessen6/import-calculator-webapp (main; локально — миграция НСК + cron/OCR доки, не запушено).
-Prod: https://imcalc.wessen.online | n8n: https://n8n.wessen.online (Traefik /opt/beget/n8n).
-Доки: PROJECT.md, deploy/DEPLOY.md, CHANGELOG.md, BACKLOG.md, SESSION_SUMMARY.md.
+Git: https://github.com/wessen6/import-calculator-webapp (main; локально — ставки v2 + UI, не запушено).
+Prod: https://imcalc.wessen.online
+Roadmap: RATES_ROADMAP.md | handoff: SESSION_SUMMARY.md
 
-Ставки: просмотр без пароля; редактирование после «Войти» на /settings/rates.
-Обновление prod: git push → VPS `update-imcalc.sh`.
+Готово: v2 rates, КП→compile, ЕКБ/Казань, merge import, хедер-админка, mobile/desktop layout.
+Следующий шаг: (1) diff превью импорта (2) UI «+ Маршрут» (3) откат rates.backup.json (4) прогон КП.
 
-Следующий шаг на VPS: commit+push → update-imcalc.sh → setup-backup-cron.sh → проверить НСК в /api/rates; OCR keys в .env.local при необходимости.
-Не трогать n8n runtime. Mock только в dev. Не коммить без команды.
+Не трогать n8n runtime. Не коммить без команды.
 ```

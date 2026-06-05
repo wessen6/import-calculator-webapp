@@ -7,7 +7,6 @@ const seedPath = path.join(dataDir, "rates.seed.json");
 const examplePath = path.join(dataDir, "rates.example.json");
 
 const payload = {
-  version: 1,
   ...buildDefaultRatesPayload(),
   exported_at: "seed"
 };

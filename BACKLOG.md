@@ -13,12 +13,22 @@
   - [ ] OCR/OpenRouter ключи в prod `.env.local` (см. `deploy/DEPLOY.md` § OCR)
 - [ ] **Закрыть публичный `GET /api/rates`** — auth / API key (сейчас OK для MVP)
 
+## Ставки из КП (roadmap → `RATES_ROADMAP.md`)
+
+- [x] План и примеры КП в `data/sources/examples/`
+- [x] Доки: `docs/RATES_*.md`, `prompts/rates-from-expediter.md`
+- [x] `rates:compile`, `rates:validate`, source → patch JSON
+- [x] JSON v2: `routes[]`, динамический `route_code`, ЕКБ/Казань, `enabled`, прочие в РФ
+- [x] Импорт с `merge: true`; подписи НДС в UI
+- [ ] Превью diff перед сохранением импорта
+- [ ] UI «+ Маршрут» в админке
+- [ ] Откат из `rates.backup.json` на сервере
+- [ ] Прогон накопленных КП в seed/sources
+
 ## Продукт
 
 - [ ] **Личная история расчётов** на пользователя (Supabase Auth)
 - [ ] **Отдельные логины** для 2–3 редакторов ставок (не общий пароль)
-- [ ] **Частичный JSON** (обновление одного маршрута) — только если понадобится
-- [ ] **Откат последнего сохранения на сервере** из `rates.backup.json` (кнопка в UI)
 
 ## Документация
 

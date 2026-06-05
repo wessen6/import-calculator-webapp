@@ -1,7 +1,7 @@
 import type { CurrencyCode } from "./types";
 import {
   DEFAULT_IMPORT_RATE_CONFIG,
-  IMPORT_RATE_CONFIGS,
+  getImportRateTemplate,
   type ImportRateConfig
 } from "./rates-config";
 
@@ -39,7 +39,7 @@ function roundMoney(value: number) {
 }
 
 export function getImportRateConfig(routeCode?: string) {
-  return IMPORT_RATE_CONFIGS[routeCode as keyof typeof IMPORT_RATE_CONFIGS] ?? DEFAULT_IMPORT_RATE_CONFIG;
+  return routeCode ? getImportRateTemplate(routeCode) : DEFAULT_IMPORT_RATE_CONFIG;
 }
 
 function getCustomsFeeRub(customsValueRub: number, config: ImportRateConfig) {

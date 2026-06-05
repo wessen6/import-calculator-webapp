@@ -5,8 +5,17 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { formatDateTime } from "@/lib/format";
 import { getEffectiveConfigUpdatedAt } from "@/lib/rates-display";
 import { TRANSPORT_TYPE_OPTIONS } from "@/lib/rates-config";
-import { normalizeRatesPayload } from "@/lib/rates-payload";
-import type { StoredRateConfig, StoredRateSettings } from "@/lib/rates-payload";
+import { mergeRouteMetas } from "@/lib/rates-route-registry";
+import {
+  isRateConfigQuotable,
+  mergeRatesPayload,
+  normalizeRatesPayload,
+  type StoredRateConfig,
+  type StoredRateSettings
+} from "@/lib/rates-payload";
+import { useHeaderNotice } from "@/components/HeaderNotice";
+import { useRatesAdmin } from "@/components/RatesAdminContext";
+import { vatModeLabel } from "@/lib/rates-vat";
 import type { RouteCode, TransportType } from "@/lib/types";
 
 type RatesApiResponse = {
@@ -17,11 +26,13 @@ type RatesApiResponse = {
 };
 
 type RatesExportPayload = {
-  version: 1;
+  version: 2;
+  routes: ReturnType<typeof mergeRouteMetas>;
   settings: StoredRateSettings;
   configs: StoredRateConfig[];
   updated_at?: string | null;
   exported_at: string;
+  merge?: boolean;
 };
 
 function isRatesImportPayload(value: unknown): value is {
@@ -87,22 +98,6 @@ type FormSnapshot = {
   updatedAt: string | null;
 };
 
-function CloseIcon() {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.5"
-      strokeLinecap="round"
-      className="h-3.5 w-3.5"
-      aria-hidden
-    >
-      <path d="M6 6l12 12M18 6 6 18" />
-    </svg>
-  );
-}
-
 export function RatesSettingsForm() {
   const importInputRef = useRef<HTMLInputElement | null>(null);
   const [settings, setSettings] = useState<StoredRateSettings | null>(null);
@@ -112,6 +107,8 @@ export function RatesSettingsForm() {
   const [error, setError] = useState<string | null>(null);
   const [importMessage, setImportMessage] = useState<string | null>(null);
   const [importMessageTone, setImportMessageTone] = useState<"info" | "success" | "error">("info");
+  const { showSavedNotice, clearNotice } = useHeaderNotice();
+  const { setIsAdminMode: setHeaderAdminMode, setActions: setHeaderAdminActions } = useRatesAdmin();
   const [preImportSnapshot, setPreImportSnapshot] = useState<FormSnapshot | null>(null);
   const [updatedAt, setUpdatedAt] = useState<string | null>(null);
   const [draftInputs, setDraftInputs] = useState<Record<string, string>>({});
@@ -128,13 +125,10 @@ export function RatesSettingsForm() {
     fetch("/api/rates")
       .then((response) => response.json())
       .then((data: RatesApiResponse) => {
-        if (data.settings) {
-          setSettings(data.settings);
-        }
-        if (data.configs) {
-          setConfigs(data.configs);
-        }
-        setUpdatedAt(data.updated_at ?? null);
+        const normalized = normalizeRatesPayload(data);
+        setSettings(normalized.settings);
+        setConfigs(normalized.configs);
+        setUpdatedAt(normalized.updated_at ?? null);
       })
       .catch(() => setError("Не удалось загрузить ставки."));
   }, []);
@@ -197,7 +191,7 @@ export function RatesSettingsForm() {
         disabled={!isAdminMode}
         onChange={(event) => onChange(event.target.value === "with_vat" ? "with_vat" : "without_vat")}
         className={clsx(
-          "w-full rounded-b-2xl border border-t-0 border-stone-200 bg-stone-50 px-3 py-3 text-sm outline-none transition focus:border-stone-400 focus:bg-white sm:w-28 sm:shrink-0 sm:rounded-l-none sm:rounded-r-2xl sm:border-l-0 sm:border-t lg:w-[6.5rem] lg:px-2 lg:text-xs xl:w-[5.75rem]",
+          "w-full rounded-b-2xl border border-t-0 border-stone-200 bg-stone-50 px-3 py-3 text-sm outline-none transition focus:border-stone-400 focus:bg-white lg:w-[7.5rem] lg:shrink-0 lg:rounded-b-2xl lg:rounded-l-none lg:rounded-r-2xl lg:border-l-0 lg:border-t",
           readOnlyFieldClass
         )}
       >
@@ -251,20 +245,25 @@ export function RatesSettingsForm() {
     onVatModeChange: (value: VatMode) => void;
   }) {
     return (
-      <div className="mt-2 flex flex-col sm:flex-row">
-        <input
-          type="number"
-          min="0"
-          step="0.01"
-          disabled={!isAdminMode}
-          value={value}
-          onChange={(event) => onValueChange(Number(event.target.value))}
-          className={clsx(
-            "min-w-0 flex-1 rounded-t-2xl border border-stone-200 bg-stone-50 px-3 py-3 text-base outline-none transition focus:border-stone-400 focus:bg-white sm:min-w-[4.5rem] sm:rounded-l-2xl sm:rounded-r-none lg:min-w-[5.5rem]",
-            readOnlyFieldClass
-          )}
-        />
-        {renderVatSelect(vatMode, onVatModeChange)}
+      <div className="mt-2">
+        <div className="flex flex-col lg:flex-row lg:items-stretch">
+          <input
+            type="number"
+            min="0"
+            step="0.01"
+            disabled={!isAdminMode}
+            value={value}
+            onChange={(event) => onValueChange(Number(event.target.value))}
+            className={clsx(
+              "min-w-0 w-full rounded-t-2xl border border-stone-200 bg-stone-50 px-3 py-3 text-base outline-none transition focus:border-stone-400 focus:bg-white lg:flex-1 lg:rounded-b-none lg:rounded-l-2xl lg:rounded-r-none",
+              readOnlyFieldClass
+            )}
+          />
+          {renderVatSelect(vatMode, onVatModeChange)}
+        </div>
+        <p className="mt-1 hidden px-1 text-[11px] leading-snug text-stone-500 lg:block">
+          {vatModeLabel(vatMode)}
+        </p>
       </div>
     );
   }
@@ -272,131 +271,91 @@ export function RatesSettingsForm() {
   function handleOwnerExit() {
     setOwnerPassword("");
     setOwnerVerified(false);
+    clearNotice();
   }
 
-  function renderSaveBar(id: string, isSticky = false) {
+  function renderLoginBar(id: string) {
     const hasPasswordDraft = ownerPassword.trim().length > 0;
-
-    const statusLabel = isAdminMode
-      ? "Режим администратора"
-      : hasPasswordDraft
-        ? "Ожидает вход"
-        : "Только просмотр";
-
-    const statusHint = isAdminMode
-      ? "Можно сохранять изменения на сервер."
-      : "Введите пароль и нажмите «Войти», чтобы редактировать ставки.";
+    const statusLabel = hasPasswordDraft ? "Ожидает вход" : "Только просмотр";
 
     return (
       <section
         className={clsx(
-          "rounded-xl border p-2 shadow-sm backdrop-blur",
-          isSticky && "sticky top-0 z-20",
-          isAdminMode && "border-emerald-300 bg-emerald-50/80",
-          !isAdminMode && hasPasswordDraft && "border-amber-200 bg-amber-50/60",
-          !isAdminMode && !hasPasswordDraft && "border-stone-200 bg-white/95"
+          "rounded-xl border p-2 shadow-sm",
+          hasPasswordDraft ? "border-amber-200 bg-amber-50/60" : "border-stone-200 bg-white"
         )}
       >
         <div className="flex items-center gap-2">
           <span
             className={clsx(
               "inline-flex min-w-0 flex-1 items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-semibold",
-              isAdminMode && "bg-emerald-100 text-emerald-800",
-              !isAdminMode && hasPasswordDraft && "bg-amber-100 text-amber-900",
-              !isAdminMode && !hasPasswordDraft && "bg-stone-100 text-stone-600"
+              hasPasswordDraft ? "bg-amber-100 text-amber-900" : "bg-stone-100 text-stone-600"
             )}
           >
-            <span aria-hidden="true">{isAdminMode ? "✓" : hasPasswordDraft ? "●" : "○"}</span>
+            <span aria-hidden="true">{hasPasswordDraft ? "●" : "○"}</span>
             <span className="truncate">{statusLabel}</span>
           </span>
-
-          {isAdminMode ? (
-            <>
-              <button
-                type="button"
-                onClick={handleReset}
-                className="h-8 shrink-0 rounded-full border border-stone-200 bg-white px-3 text-xs font-semibold text-stone-700"
-              >
-                Сброс
-              </button>
-              <button
-                type="button"
-                onClick={() => void handleSave()}
-                className="h-8 shrink-0 rounded-full bg-stone-950 px-3 text-xs font-semibold text-white"
-              >
-                Сохранить
-              </button>
-              <button
-                type="button"
-                onClick={handleOwnerExit}
-                aria-label="Выйти из режима администратора"
-                className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-rose-500 transition hover:bg-rose-50"
-              >
-                <CloseIcon />
-              </button>
-            </>
-          ) : (
-            <>
-              <input
-                id={id}
-                type="password"
-                value={ownerPassword}
-                onChange={(event) => {
-                  setOwnerPassword(event.target.value);
-                  setOwnerVerified(false);
-                }}
-                onKeyDown={(event) => {
-                  if (event.key === "Enter" && hasPasswordDraft) {
-                    void handleOwnerLogin();
-                  }
-                }}
-                placeholder="Пароль владельца"
-                className="h-8 min-w-0 flex-1 rounded-lg border border-stone-200 bg-stone-50 px-3 text-xs outline-none transition focus:border-stone-400 focus:bg-white"
-              />
-              <button
-                type="button"
-                disabled={!hasPasswordDraft}
-                onClick={() => void handleOwnerLogin()}
-                className="h-8 shrink-0 rounded-full bg-stone-950 px-3 text-xs font-semibold text-white disabled:cursor-not-allowed disabled:bg-stone-400"
-              >
-                Войти
-              </button>
-            </>
-          )}
+          <input
+            id={id}
+            type="password"
+            value={ownerPassword}
+            onChange={(event) => {
+              setOwnerPassword(event.target.value);
+              setOwnerVerified(false);
+            }}
+            onKeyDown={(event) => {
+              if (event.key === "Enter" && hasPasswordDraft) {
+                void handleOwnerLogin();
+              }
+            }}
+            placeholder="Пароль владельца"
+            className="h-8 min-w-0 flex-1 rounded-lg border border-stone-200 bg-stone-50 px-3 text-xs outline-none transition focus:border-stone-400 focus:bg-white"
+          />
+          <button
+            type="button"
+            disabled={!hasPasswordDraft}
+            onClick={() => void handleOwnerLogin()}
+            className="h-8 shrink-0 rounded-full bg-stone-950 px-3 text-xs font-semibold text-white disabled:cursor-not-allowed disabled:bg-stone-400"
+          >
+            Войти
+          </button>
         </div>
-        <p className="mt-1 truncate text-[11px] text-stone-500">{statusHint}</p>
+        <p className="mt-1 truncate text-[11px] text-stone-500">
+          Введите пароль и нажмите «Войти», чтобы редактировать ставки.
+        </p>
       </section>
     );
   }
 
   async function handleOwnerLogin() {
     const loggedIn = await persistRates({ loginOnly: true });
-    if (loggedIn) {
+    if (loggedIn !== null) {
       setImportMessageTone("success");
       setImportMessage("Вход выполнен. Можно редактировать и сохранять ставки.");
     }
   }
 
   async function handleSave() {
-    const saved = await persistRates();
-    if (saved) {
+    const savedAt = await persistRates();
+    if (savedAt) {
+      showSavedNotice(savedAt);
       setImportMessageTone("success");
-      setImportMessage("Ставки сохранены на сервере. Данные доступны для новых расчётов.");
+      setImportMessage("Ставки сохранены на сервере.");
     }
   }
 
-  async function persistRates(options?: { loginOnly?: boolean }): Promise<boolean> {
+  async function persistRates(options?: { loginOnly?: boolean }): Promise<string | null> {
     setError(null);
     if (!settings) {
       setImportMessageTone("error");
       setImportMessage("Нет данных для сохранения. Обновите страницу.");
-      return false;
+      return null;
     }
 
     if (!ownerPassword.trim()) {
       setImportMessageTone("error");
       setImportMessage("Введите пароль владельца.");
-      return false;
+      return null;
     }
 
     const response = await fetch("/api/rates", {
@@ -405,7 +364,7 @@ export function RatesSettingsForm() {
         "content-type": "application/json",
         "x-owner-password": ownerPassword
       },
-      body: JSON.stringify({ settings, configs })
+      body: JSON.stringify(normalizeRatesPayload({ settings, configs }))
     });
     const data = (await response.json()) as RatesApiResponse;
 
@@ -417,22 +376,22 @@ export function RatesSettingsForm() {
             ? "Неверный пароль. Проверьте и нажмите «Войти» снова."
             : "Не удалось сохранить ставки. Проверьте пароль владельца.")
       );
-      return false;
+      return null;
     }
 
-    if (data.configs) {
-      setConfigs(data.configs);
-    }
-    if (data.settings) {
-      setSettings(data.settings);
-    }
-    if (data.updated_at) {
-      setUpdatedAt(data.updated_at);
-    }
+    const normalized = normalizeRatesPayload({
+      settings: data.settings ?? settings,
+      configs: data.configs ?? configs,
+      updated_at: data.updated_at
+    });
+    setSettings(normalized.settings);
+    setConfigs(normalized.configs);
+    const savedAt = normalized.updated_at ?? new Date().toISOString();
+    setUpdatedAt(savedAt);
 
     setPreImportSnapshot(null);
     setOwnerVerified(true);
-    return true;
+    return savedAt;
   }
 
   function handleExportRates() {
@@ -443,7 +402,8 @@ export function RatesSettingsForm() {
     }
 
     const payload: RatesExportPayload = {
-      version: 1,
+      version: 2,
+      routes: mergeRouteMetas(undefined, configs),
       settings,
       configs,
       updated_at: updatedAt,
@@ -485,6 +445,7 @@ export function RatesSettingsForm() {
 
     setError(null);
     setImportMessage(null);
+    clearNotice();
 
     try {
       if (!settings) {
@@ -503,10 +464,17 @@ export function RatesSettingsForm() {
         updatedAt
       });
 
-      const normalized = normalizeRatesPayload(raw);
-      setSettings(normalized.settings);
-      setConfigs(normalized.configs);
-      setUpdatedAt(normalized.updated_at ?? null);
+      const patch = normalizeRatesPayload(raw);
+      const merged =
+        raw && typeof raw === "object" && (raw as { merge?: boolean }).merge === true && settings
+          ? mergeRatesPayload(
+              { settings, configs, updated_at: updatedAt, version: 2 },
+              patch
+            )
+          : patch;
+      setSettings(merged.settings);
+      setConfigs(merged.configs);
+      setUpdatedAt(merged.updated_at ?? null);
       setDraftInputs({});
       setImportMessageTone("info");
       setImportMessage(
@@ -524,16 +492,16 @@ export function RatesSettingsForm() {
   }
 
   function handleReset() {
+    clearNotice();
     fetch("/api/rates")
       .then((response) => response.json())
       .then((data: RatesApiResponse) => {
-        if (data.configs) {
-          setConfigs(data.configs);
-        }
-        if (data.settings) {
-          setSettings(data.settings);
-        }
-        setUpdatedAt(data.updated_at ?? null);
+        const normalized = normalizeRatesPayload(data);
+        setSettings(normalized.settings);
+        setConfigs(normalized.configs);
+        setUpdatedAt(normalized.updated_at ?? null);
+        setImportMessageTone("info");
+        setImportMessage("Загружены сохранённые на сервере ставки.");
       });
   }
 
@@ -562,82 +530,82 @@ export function RatesSettingsForm() {
   function renderRouteConfigFields(config: StoredRateConfig) {
     return (
       <>
-        <div className="mt-4 grid grid-cols-2 gap-3">
-          <div>
-            <label className="text-sm font-semibold text-stone-900">До границы</label>
-            <div className="mt-2 flex">
-              <input
-                type="text"
-                inputMode="decimal"
-                disabled={!isAdminMode}
-                value={getDraftValue(
+        <div className="mt-4 grid grid-cols-2 gap-x-3 gap-y-2 lg:grid-cols-1">
+          <label className="self-end text-sm font-semibold leading-tight text-stone-900">
+            До границы
+          </label>
+          <label className="self-end text-sm font-semibold leading-tight text-stone-900">
+            Прочие до границы
+          </label>
+          <div className="flex">
+            <input
+              type="text"
+              inputMode="decimal"
+              disabled={!isAdminMode}
+              value={getDraftValue(
+                `${config.route_code}-${config.transport_type}-pre_border_expenses_foreign`,
+                config.pre_border_expenses_foreign
+              )}
+              onBlur={() =>
+                clearDraftValue(
+                  `${config.route_code}-${config.transport_type}-pre_border_expenses_foreign`
+                )
+              }
+              onChange={(event) =>
+                updateDraftValue(
                   `${config.route_code}-${config.transport_type}-pre_border_expenses_foreign`,
-                  config.pre_border_expenses_foreign
-                )}
-                onBlur={() =>
-                  clearDraftValue(
-                    `${config.route_code}-${config.transport_type}-pre_border_expenses_foreign`
-                  )
-                }
-                onChange={(event) =>
-                  updateDraftValue(
-                    `${config.route_code}-${config.transport_type}-pre_border_expenses_foreign`,
-                    event.target.value,
-                    (value) =>
-                      updateConfig(config.route_code, config.transport_type, {
-                        pre_border_expenses_foreign: value
-                      })
-                  )
-                }
-                className={clsx(
-                  "min-w-0 flex-1 rounded-l-2xl border border-stone-200 bg-stone-50 px-3 py-3 text-base outline-none transition focus:border-stone-400 focus:bg-white",
-                  readOnlyFieldClass
-                )}
-              />
-              <span className="rounded-r-2xl border border-l-0 border-stone-200 bg-stone-100 px-3 py-3 text-sm font-semibold text-stone-500">
-                USD
-              </span>
-            </div>
+                  event.target.value,
+                  (value) =>
+                    updateConfig(config.route_code, config.transport_type, {
+                      pre_border_expenses_foreign: value
+                    })
+                )
+              }
+              className={clsx(
+                "min-w-0 flex-1 rounded-l-2xl border border-stone-200 bg-stone-50 px-3 py-3 text-base outline-none transition focus:border-stone-400 focus:bg-white",
+                readOnlyFieldClass
+              )}
+            />
+            <span className="rounded-r-2xl border border-l-0 border-stone-200 bg-stone-100 px-3 py-3 text-sm font-semibold text-stone-500">
+              USD
+            </span>
           </div>
-          <div>
-            <label className="text-sm font-semibold text-stone-900">Прочие до границы</label>
-            <div className="mt-2 flex">
-              <input
-                type="text"
-                inputMode="decimal"
-                disabled={!isAdminMode}
-                value={getDraftValue(
+          <div className="flex">
+            <input
+              type="text"
+              inputMode="decimal"
+              disabled={!isAdminMode}
+              value={getDraftValue(
+                `${config.route_code}-${config.transport_type}-other_pre_border_expenses_foreign`,
+                config.other_pre_border_expenses_foreign
+              )}
+              onBlur={() =>
+                clearDraftValue(
+                  `${config.route_code}-${config.transport_type}-other_pre_border_expenses_foreign`
+                )
+              }
+              onChange={(event) =>
+                updateDraftValue(
                   `${config.route_code}-${config.transport_type}-other_pre_border_expenses_foreign`,
-                  config.other_pre_border_expenses_foreign
-                )}
-                onBlur={() =>
-                  clearDraftValue(
-                    `${config.route_code}-${config.transport_type}-other_pre_border_expenses_foreign`
-                  )
-                }
-                onChange={(event) =>
-                  updateDraftValue(
-                    `${config.route_code}-${config.transport_type}-other_pre_border_expenses_foreign`,
-                    event.target.value,
-                    (value) =>
-                      updateConfig(config.route_code, config.transport_type, {
-                        other_pre_border_expenses_foreign: value
-                      })
-                  )
-                }
-                className={clsx(
-                  "min-w-0 flex-1 rounded-l-2xl border border-stone-200 bg-stone-50 px-3 py-3 text-base outline-none transition focus:border-stone-400 focus:bg-white",
-                  readOnlyFieldClass
-                )}
-              />
-              <span className="rounded-r-2xl border border-l-0 border-stone-200 bg-stone-100 px-3 py-3 text-sm font-semibold text-stone-500">
-                USD
-              </span>
-            </div>
+                  event.target.value,
+                  (value) =>
+                    updateConfig(config.route_code, config.transport_type, {
+                      other_pre_border_expenses_foreign: value
+                    })
+                )
+              }
+              className={clsx(
+                "min-w-0 flex-1 rounded-l-2xl border border-stone-200 bg-stone-50 px-3 py-3 text-base outline-none transition focus:border-stone-400 focus:bg-white",
+                readOnlyFieldClass
+              )}
+            />
+            <span className="rounded-r-2xl border border-l-0 border-stone-200 bg-stone-100 px-3 py-3 text-sm font-semibold text-stone-500">
+              USD
+            </span>
           </div>
         </div>
 
-        <div className="mt-4 grid grid-cols-2 gap-3 xl:grid-cols-1">
+        <div className="mt-4 grid grid-cols-2 gap-3 lg:grid-cols-1 lg:gap-4">
           <div>
             <label className="text-sm font-semibold text-stone-900">Перевозка по РФ</label>
             {renderRubVatControl({
@@ -698,14 +666,68 @@ export function RatesSettingsForm() {
                 })
             })}
           </div>
+          <div className="col-span-2 lg:col-span-1">
+            <label className="text-sm font-semibold text-stone-900">
+              Прочие в РФ
+              <span className="ml-1 font-normal text-stone-500">
+                (страховка, досмотр, раскредитация)
+              </span>
+            </label>
+            {renderRubVatControl({
+              value: config.other_russian_expenses_rub ?? 0,
+              vatMode: config.other_russian_expenses_vat_mode ?? "without_vat",
+              onValueChange: (value) =>
+                updateConfig(config.route_code, config.transport_type, {
+                  other_russian_expenses_rub: value,
+                  enabled: value > 0 ? true : config.enabled
+                }),
+              onVatModeChange: (value) =>
+                updateConfig(config.route_code, config.transport_type, {
+                  other_russian_expenses_vat_mode: value
+                })
+            })}
+          </div>
         </div>
       </>
     );
   }
 
+  const headerActionsRef = useRef({
+    onSave: () => {},
+    onReset: () => {},
+    onExit: () => {}
+  });
+
+  useEffect(() => {
+    headerActionsRef.current = {
+      onSave: () => {
+        void handleSave();
+      },
+      onReset: handleReset,
+      onExit: handleOwnerExit
+    };
+  });
+
+  useEffect(() => {
+    setHeaderAdminMode(isAdminMode);
+
+    if (!isAdminMode) {
+      setHeaderAdminActions(null);
+      return;
+    }
+
+    setHeaderAdminActions({
+      onSave: () => headerActionsRef.current.onSave(),
+      onReset: () => headerActionsRef.current.onReset(),
+      onExit: () => headerActionsRef.current.onExit()
+    });
+
+    return () => setHeaderAdminActions(null);
+  }, [isAdminMode, setHeaderAdminMode, setHeaderAdminActions]);
+
   return (
     <div className="space-y-4">
-      {renderSaveBar("owner_password_top", true)}
+      {!isAdminMode ? renderLoginBar("owner_password_top") : null}
 
       <section className="rounded-[1.5rem] border border-stone-200 bg-white p-4 shadow-sm">
         <div className="grid grid-cols-2 gap-3">
@@ -937,23 +959,26 @@ export function RatesSettingsForm() {
                 Тип перевозки
                 <select
                   value={getSelectedTransport(group)}
-                  disabled={!isAdminMode}
                   onChange={(event) => {
                     setSelectedTransportByRoute((current) => ({
                       ...current,
                       [group.route_code]: event.target.value as TransportType
                     }));
                   }}
-                  className={clsx(
-                    "mt-2 w-full rounded-2xl border border-stone-200 bg-stone-50 px-4 py-3 text-base outline-none transition focus:border-stone-400 focus:bg-white",
-                    readOnlyFieldClass
-                  )}
+                  className="mt-2 w-full rounded-2xl border border-stone-200 bg-stone-50 px-4 py-3 text-base outline-none transition focus:border-stone-400 focus:bg-white disabled:cursor-default disabled:bg-stone-50 disabled:text-stone-800"
                 >
-                  {TRANSPORT_TYPE_OPTIONS.map((transport) => (
-                    <option key={transport.code} value={transport.code}>
-                      {transport.label}
-                    </option>
-                  ))}
+                  {group.configs.map((row) => {
+                    const transport = TRANSPORT_TYPE_OPTIONS.find((t) => t.code === row.transport_type);
+                    const label = transport?.label ?? row.transport_label;
+                    const quotable = isRateConfigQuotable(row);
+
+                    return (
+                      <option key={row.transport_type} value={row.transport_type}>
+                        {label}
+                        {quotable ? "" : " (нет котировки)"}
+                      </option>
+                    );
+                  })}
                 </select>
               </label>
 
@@ -969,7 +994,6 @@ export function RatesSettingsForm() {
         </p>
       ) : null}
 
-      {renderSaveBar("owner_password")}
     </div>
   );
 }

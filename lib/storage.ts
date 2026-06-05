@@ -173,6 +173,11 @@ export function getFixedRussianExpensesRub(
     addVat(config.port_operations_rub, settings.russian_vat_rate, config.port_operations_vat_mode) +
     addVat(config.storage_rub, settings.russian_vat_rate, config.storage_vat_mode) +
     addVat(
+      config.other_russian_expenses_rub ?? 0,
+      settings.russian_vat_rate,
+      config.other_russian_expenses_vat_mode ?? "without_vat"
+    ) +
+    addVat(
       settings.customs_clearance_rub,
       settings.russian_vat_rate,
       settings.customs_clearance_vat_mode

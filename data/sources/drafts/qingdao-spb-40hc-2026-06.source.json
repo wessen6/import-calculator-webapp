@@ -1,0 +1,30 @@
+{
+  "meta": {
+    "expediter": "пример из КП",
+    "source_file": "examples/qingdao-spb-sea-40hc.txt",
+    "date": "2026-06",
+    "notes": ["Охрану не учитываем", "ТЭО → settings.customs_clearance"]
+  },
+  "merge": true,
+  "settings_patch": {
+    "customs_clearance_rub": 7500,
+    "customs_clearance_vat_mode": "without_vat"
+  },
+  "updates": [
+    {
+      "route_code": "qingdao-spb",
+      "route_label": "Китай, Циндао → СПб",
+      "transport": "40HC",
+      "freight_usd": 7950,
+      "enabled": true,
+      "lines_rub": [
+        {
+          "bucket": "pickup_delivery",
+          "name": "Авто вывоз на Парнас",
+          "amount": 30000,
+          "vat": "without"
+        }
+      ]
+    }
+  ]
+}

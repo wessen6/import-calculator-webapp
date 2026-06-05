@@ -77,8 +77,34 @@ export const IMPORT_RATE_CONFIGS: Record<RouteCode, ImportRateConfig> = {
     ...baseChinaRouteConfig,
     route_code: "qingdao-novosibirsk",
     route_label: "Китай, Циндао → НСК"
+  },
+  "qingdao-ekb": {
+    ...baseChinaRouteConfig,
+    route_code: "qingdao-ekb",
+    route_label: "Китай, Циндао → ЕКБ"
+  },
+  "qingdao-kazan": {
+    ...baseChinaRouteConfig,
+    route_code: "qingdao-kazan",
+    route_label: "Китай, Циндао → Казань"
   }
 };
+
+export function getImportRateTemplate(routeCode: string): ImportRateConfig {
+  const known = IMPORT_RATE_CONFIGS[routeCode as keyof typeof IMPORT_RATE_CONFIGS];
+
+  if (known) {
+    return known;
+  }
+
+  return {
+    ...baseChinaRouteConfig,
+    route_code: routeCode,
+    route_label: routeCode,
+    transport_type: "container_40ft",
+    transport_label: "Контейнер 40HC"
+  };
+}
 
 export const DEFAULT_IMPORT_RATE_CONFIG = IMPORT_RATE_CONFIGS["qingdao-msk"];
 
