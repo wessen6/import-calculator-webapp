@@ -6,6 +6,42 @@
 
 ---
 
+## 2026-06-05 (этап 7: южное КП + Perplexity Space)
+
+### Добавлено
+
+- `drafts/qingdao-south-40hc-2026-06.source.json`, `compiled/*.patch.json` (7 маршрутов).
+- `prompts/PERPLEXITY_SPACE_INSTRUCTIONS.md` — Instructions для Space (`lines_rub` массив).
+- `docs/RATES_STAGE7_GUIDE.md`, `STAGE7_CHECKLIST.md`, `drafts/_TEMPLATE.source.json`.
+
+### Изменено
+
+- Промпт КП: A+C+D (хаб+спицы, эталон Москва/юг, чеклист), города в `rates-route-registry`.
+
+---
+
+## 2026-06-05 (промпт КП: хаб+спицы, эталоны)
+
+### Изменено
+
+- `prompts/rates-from-expediter.md`: A хаб+спицы, C эталон Москва/юг/Воронеж/Ярославль, D чеклист; индикатив только в `meta.notes`.
+- `docs/RATES_FIELD_MAP.md` — хабы Москва/НСК/Новороссийск.
+
+---
+
+## 2026-06-05 (этап 7: инструкция прогона КП)
+
+### Добавлено
+
+- `docs/RATES_STAGE7_GUIDE.md` — маршруты в UI + compile → import → smoke.
+- `data/sources/STAGE7_CHECKLIST.md`, `drafts/_TEMPLATE.source.json`.
+
+### Изменено
+
+- `RATES_UPDATE_RUNBOOK.md`, `examples/README.md` — ссылки на этап 7.
+
+---
+
 ## 2026-06-05 (откат ставок из backup)
 
 ### Добавлено

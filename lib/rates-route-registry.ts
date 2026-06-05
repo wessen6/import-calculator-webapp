@@ -106,7 +106,14 @@ const DESTINATION_TO_CODE: Record<string, string> = {
   нск: "novosibirsk",
   екб: "ekb",
   екатеринбург: "ekb",
-  казань: "kazan"
+  казань: "kazan",
+  воронеж: "voronezh",
+  ярославль: "yaroslavl",
+  махачкала: "makhachkala",
+  краснодар: "krasnodar",
+  "ростов-на-дону": "rostov",
+  ростов: "rostov",
+  омск: "omsk"
 };
 
 for (const route of BUILTIN_ROUTE_METAS) {

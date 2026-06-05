@@ -1,0 +1,50 @@
+{
+  "meta": {
+    "expediter": "название экспедитора",
+    "source_file": "examples/имя-файла.txt",
+    "date": "2026-06",
+    "notes": ["Охрану не учитываем"]
+  },
+  "merge": true,
+  "settings_patch": {
+    "customs_clearance_rub": 0,
+    "customs_clearance_vat_mode": "without_vat",
+    "forwarding_rub": 0,
+    "forwarding_vat_mode": "without_vat"
+  },
+  "updates": [
+    {
+      "route_code": "qingdao-vladivostok",
+      "route_label": "Китай, Циндао → Владивосток",
+      "transport": "40HC",
+      "freight_usd": 0,
+      "enabled": true,
+      "lines_rub": [
+        {
+          "bucket": "pickup_delivery",
+          "name": "Автовывоз",
+          "amount": 0,
+          "vat": "without"
+        },
+        {
+          "bucket": "domestic_transport",
+          "name": "ЖД по РФ",
+          "amount": 0,
+          "vat": "without"
+        },
+        {
+          "bucket": "port_operations",
+          "name": "ПРР",
+          "amount": 0,
+          "vat": "with"
+        },
+        {
+          "bucket": "other_russian",
+          "name": "Страховка / досмотр",
+          "amount": 0,
+          "vat": "without"
+        }
+      ]
+    }
+  ]
+}

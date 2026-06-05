@@ -30,7 +30,7 @@
 | 4b | UI: хедер-админка, mobile layout, выравнивание полей | ✅ | `RatesHeaderAdmin`, grid |
 | 5 | Частичный merge импорта + превью diff | ✅ | `mergeRatesPayload`, `rates-import-diff`, `RatesImportPreview` |
 | 6 | Откат server backup + «+ Маршрут» в админке | ✅ | API restore + UI |
-| 7 | Прогон накопленных КП | ⬜ | `data/sources/` |
+| 7 | Прогон накопленных КП | 🟡 | `docs/RATES_STAGE7_GUIDE.md`, эталон СПб ✅ |
 | 8 | Пошлина по ТН ВЭД | ⬜ | будущее |
 
 ## Цепочка обновления

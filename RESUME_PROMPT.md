@@ -12,9 +12,9 @@ Git: https://github.com/wessen6/import-calculator-webapp
 Prod: https://imcalc.wessen.online
 Roadmap: RATES_ROADMAP.md | handoff: SESSION_SUMMARY.md
 
-Готово: v2 rates, КП→compile/validate, ЕКБ/Казань, merge import + превью diff, хедер-админка, mobile/desktop layout.
+Готово: этапы 1–6 (v2, compile, diff, +маршрут, backup restore). Ветка feat/rates-v2-cp-pipeline, не в prod.
 
-Следующий шаг: UI «+ Маршрут» в админке ставок или откат из rates.backup.json (roadmap этап 6).
+Следующий шаг: этап 7 — прогон КП по docs/RATES_STAGE7_GUIDE.md; чеклист data/sources/STAGE7_CHECKLIST.md.
 
 Не трогать n8n runtime. Не коммить без команды.
 ```

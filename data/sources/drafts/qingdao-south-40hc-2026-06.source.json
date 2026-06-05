@@ -1,0 +1,94 @@
+{
+  "meta": {
+    "expediter": "Gagntong, OVP",
+    "source_file": "examples/qingdao-south-40hc.txt",
+    "date": "2026-06",
+    "notes": [
+      "Южное направление через Новороссийск.",
+      "Охрана, перевес, пробег за МКАД — не в ставки.",
+      "Прямое ЖД 8000 USD + ПРР 52k отброшено (дороже моря+ЖД через ВМТП).",
+      "OVP: конвертации и ПРР включены в котировку."
+    ],
+    "questions": []
+  },
+  "merge": true,
+  "settings_patch": {},
+  "updates": [
+    {
+      "route_code": "qingdao-msk",
+      "route_label": "Китай, Циндао → МСК",
+      "transport": "40HC",
+      "freight_usd": 3300,
+      "enabled": true,
+      "lines_rub": [
+        { "name": "ЖД ВМТП – Москва", "bucket": "domestic_transport", "amount": 293000, "vat": "without" },
+        { "name": "Приём и вывоз (МКАД)", "bucket": "pickup_delivery", "amount": 60000, "vat": "without" }
+      ]
+    },
+    {
+      "route_code": "qingdao-vladivostok",
+      "route_label": "Китай, Циндао → Владивосток",
+      "transport": "40HC",
+      "freight_usd": 2600,
+      "enabled": true,
+      "lines_rub": [
+        { "name": "Приём и вывоз по городу", "bucket": "pickup_delivery", "amount": 45000, "vat": "without" }
+      ]
+    },
+    {
+      "route_code": "qingdao-voronezh",
+      "route_label": "Китай, Циндао → Воронеж",
+      "transport": "40HC",
+      "freight_usd": 3300,
+      "enabled": true,
+      "lines_rub": [
+        { "name": "ЖД ВМТП – Москва", "bucket": "domestic_transport", "amount": 293000, "vat": "without" },
+        { "name": "МСК – Воронеж", "bucket": "pickup_delivery", "amount": 112000, "vat": "without" }
+      ]
+    },
+    {
+      "route_code": "qingdao-yaroslavl",
+      "route_label": "Китай, Циндао → Ярославль",
+      "transport": "40HC",
+      "freight_usd": 3300,
+      "enabled": true,
+      "lines_rub": [
+        { "name": "ЖД ВМТП – Москва", "bucket": "domestic_transport", "amount": 293000, "vat": "without" },
+        { "name": "МСК – Ярославль", "bucket": "pickup_delivery", "amount": 95000, "vat": "without" }
+      ]
+    },
+    {
+      "route_code": "qingdao-makhachkala",
+      "route_label": "Китай, Циндао → Махачкала",
+      "transport": "40HC",
+      "freight_usd": 5500,
+      "enabled": true,
+      "lines_rub": [
+        { "name": "DTHC Новороссийск", "bucket": "port_operations", "amount": 56000, "vat": "without" },
+        { "name": "Новороссийск – Махачкала", "bucket": "pickup_delivery", "amount": 150000, "vat": "without" }
+      ]
+    },
+    {
+      "route_code": "qingdao-krasnodar",
+      "route_label": "Китай, Циндао → Краснодар",
+      "transport": "40HC",
+      "freight_usd": 5500,
+      "enabled": true,
+      "lines_rub": [
+        { "name": "DTHC Новороссийск", "bucket": "port_operations", "amount": 56000, "vat": "without" },
+        { "name": "Новороссийск – Краснодар", "bucket": "pickup_delivery", "amount": 50000, "vat": "without" }
+      ]
+    },
+    {
+      "route_code": "qingdao-rostov",
+      "route_label": "Китай, Циндао → Ростов-на-Дону",
+      "transport": "40HC",
+      "freight_usd": 5500,
+      "enabled": true,
+      "lines_rub": [
+        { "name": "DTHC Новороссийск", "bucket": "port_operations", "amount": 56000, "vat": "without" },
+        { "name": "Новороссийск – Ростов", "bucket": "pickup_delivery", "amount": 75000, "vat": "without" }
+      ]
+    }
+  ]
+}

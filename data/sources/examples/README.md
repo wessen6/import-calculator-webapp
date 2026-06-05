@@ -18,3 +18,11 @@
 ## Черновик под compile
 
 Пример: `../drafts/qingdao-spb-40hc-2026-06.source.json` → `npm run rates:compile`.
+
+## Этап 7 (прогон)
+
+1. Новый маршрут → UI `/settings/rates` → **+ Маршрут** (код `qingdao-{город}`).
+2. Черновик → `../drafts/` (шаблон `_TEMPLATE.source.json`).
+3. Compile → validate → импорт с diff → сохранить.
+
+Подробно: `docs/RATES_STAGE7_GUIDE.md`, чеклист `../STAGE7_CHECKLIST.md`.

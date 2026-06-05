@@ -11,18 +11,21 @@
 
 ## Пошагово
 
-1. Сохранить текст КП в `data/sources/examples/` (опционально).
-2. Perplexity: вставить промпт + текст → получить `*.source.json` (см. шаблон в `drafts/`).
-3. В Cursor: `npm run rates:compile -- data/sources/drafts/имя.source.json`
-4. `npm run rates:validate -- data/sources/compiled/имя.patch.json`
-5. Войти в «Ставки» → **Импорт JSON** → выбрать `*.patch.json` (`merge: true` дополняет текущие).
-6. Проверить цифры, НДС-подписи → **Сохранить**.
-7. Smoke: «Новый расчёт» — маршрут и суммы до границы / по РФ.
+**Полная инструкция этапа 7:** `docs/RATES_STAGE7_GUIDE.md`  
+**Чеклист:** `data/sources/STAGE7_CHECKLIST.md`
+
+1. Новый город → UI «+ Маршрут» на `/settings/rates` (код `qingdao-…`) → **Сохранить**.
+2. Сохранить текст КП в `data/sources/examples/` (опционально).
+3. Perplexity: промпт `prompts/rates-from-expediter.md` + текст → `drafts/*.source.json` (шаблон: `drafts/_TEMPLATE.source.json`).
+4. `npm run rates:compile -- data/sources/drafts/имя.source.json`
+5. `npm run rates:validate -- data/sources/compiled/имя.patch.json`
+6. «Ставки» → **Импорт JSON** → превью diff → **Применить в форму** → **Сохранить**.
+7. Smoke: «Новый расчёт» — маршрут и суммы.
 
 ## Откат
 
-- До сохранения: «Отменить импорт» в форме.
-- После сохранения (скоро): кнопка из `rates.backup.json` (этап 6 roadmap).
+- До сохранения после импорта: **Вернуть как было (до импорта)**.
+- После сохранения: **Восстановить из backup** (`rates.backup.json` на сервере).
 
 ## Частичное обновление
 
