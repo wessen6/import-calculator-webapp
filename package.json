@@ -10,7 +10,9 @@
     "typecheck": "tsc --noEmit",
     "rates:seed": "tsx scripts/generate-rates-seed.ts",
     "rates:compile": "tsx scripts/compile-rates.ts",
-    "rates:validate": "tsx scripts/validate-rates.ts"
+    "rates:validate": "tsx scripts/validate-rates.ts",
+    "rates:apply": "tsx scripts/apply-rates-patch.ts",
+    "rates:smoke": "tsx scripts/smoke-rates.ts"
   },
   "dependencies": {
     "@supabase/supabase-js": "latest",

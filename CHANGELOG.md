@@ -6,6 +6,24 @@
 
 ---
 
+## 2026-06-06 (этап 7: CLI apply/smoke, НСК КП)
+
+### Добавлено
+
+- `npm run rates:apply` — merge patch в `.app-data/rates.json` (эквивалент UI import+Сохранить).
+- `npm run rates:smoke` — проверка маршрутов spb/south/nsk для `/calculations/new`.
+- `drafts/qingdao-nsk-omsk-40hc-2026-06.source.json`, `compiled/*.patch.json` (Panda ВСК, ПРР 20k).
+
+### Исправлено
+
+- «Новый расчёт»: цена/количество с запятой больше не обнуляют поле «Расходы РФ».
+
+### Изменено
+
+- `STAGE7_CHECKLIST.md` — local/prod статусы spb, south, nsk.
+
+---
+
 ## 2026-06-05 (этап 7: южное КП + Perplexity Space)
 
 ### Добавлено

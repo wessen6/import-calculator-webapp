@@ -1,0 +1,40 @@
+{
+  "meta": {
+    "expediter": "пример из КП",
+    "source_file": "examples/qingdao-nsk-omsk-40hc.txt",
+    "date": "2026-06",
+    "notes": [
+      "Охрану не учитываем",
+      "Два варианта: Panda (ВСК 3200+210k) дешевле Gagntong (ВМТП 3000+238k) — взят Panda",
+      "Новосибирск–Омск ~120 000 ₽ — индикатив, только в notes",
+      "ПРР на станции прибытия ~20 000 ₽"
+    ]
+  },
+  "merge": true,
+  "settings_patch": {
+    "customs_clearance_vat_mode": "without_vat"
+  },
+  "updates": [
+    {
+      "route_code": "qingdao-novosibirsk",
+      "route_label": "Китай, Циндао → НСК",
+      "transport": "40HC",
+      "freight_usd": 3200,
+      "enabled": true,
+      "lines_rub": [
+        {
+          "name": "ЖД ВСК – Новосибирск",
+          "bucket": "domestic_transport",
+          "amount": 210000,
+          "vat": "without"
+        },
+        {
+          "name": "ПРР на станции прибытия",
+          "bucket": "port_operations",
+          "amount": 20000,
+          "vat": "without"
+        }
+      ]
+    }
+  ]
+}

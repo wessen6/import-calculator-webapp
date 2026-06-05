@@ -50,6 +50,11 @@ function parseDecimalInput(value: FormDataEntryValue | null) {
   return Number(String(value ?? "").trim().replace(",", "."));
 }
 
+function parseDecimalString(value: string) {
+  const parsed = parseDecimalInput(value);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
 export function NewCalculationForm() {
   const router = useRouter();
   const dataSectionRef = useRef<HTMLElement | null>(null);
@@ -359,8 +364,12 @@ export function NewCalculationForm() {
   const preBorderExpensesUsd = selectedRoute?.pre_border_expenses_foreign ?? 0;
   const preBorderExpensesRub =
     usdExchangeRate !== null ? preBorderExpensesUsd * usdExchangeRate : null;
+  const parsedQuantity = parseDecimalString(quantity);
+  const parsedUnitPrice = parseDecimalString(unitPrice);
   const invoiceTotalRub =
-    selectedExchangeRate !== null ? Number(quantity) * Number(unitPrice) * selectedExchangeRate : null;
+    selectedExchangeRate !== null && parsedQuantity !== null && parsedUnitPrice !== null
+      ? parsedQuantity * parsedUnitPrice * selectedExchangeRate
+      : null;
   const fixedRussianExpensesRub =
     selectedRoute && rateSettings ? getFixedRussianExpensesRub(rateSettings, selectedRoute) : 0;
   const bankFeeRub =

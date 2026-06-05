@@ -8,13 +8,17 @@
 Продолжи Next.js import-calculator-webapp.
 
 Git: https://github.com/wessen6/import-calculator-webapp
-Ветка: feat/rates-v2-cp-pipeline (коммит 6f3a8f0, не запушено). main = prod baseline.
-Prod: https://imcalc.wessen.online
-Roadmap: RATES_ROADMAP.md | handoff: SESSION_SUMMARY.md
+Ветка: main (a3b1fe6 + незакоммичено: rates:apply/smoke, nsk-omsk draft+patch).
+Prod: https://imcalc.wessen.online — юг OK; СПб старый (26500→7950); нужен деплой + импорт patch на prod.
+Roadmap: RATES_ROADMAP.md | handoff: SESSION_SUMMARY.md | этап 7: docs/RATES_STAGE7_GUIDE.md
 
-Готово: этапы 1–6 (v2, compile, diff, +маршрут, backup restore). Ветка feat/rates-v2-cp-pipeline, не в prod.
+Готово локально (rates:apply + rates:smoke):
+- qingdao-spb-40hc: import+save+smoke ✅
+- qingdao-south-40hc: prod save+smoke ✅
+- qingdao-nsk-omsk-40hc: draft+patch+validate+local apply+smoke ✅
 
-Следующий шаг: этап 7 — прогон КП по docs/RATES_STAGE7_GUIDE.md; чеклист data/sources/STAGE7_CHECKLIST.md.
+Следующий шаг: деплой VPS (update-imcalc.sh) → prod UI import spb + nsk patches → smoke.
+Чеклист: data/sources/STAGE7_CHECKLIST.md.
 
 Не трогать n8n runtime. Не коммить без команды.
 ```

@@ -180,6 +180,10 @@ npm run rates:validate -- data/sources/compiled/имя.patch.json
 npm run rates:compile -- data/sources/drafts/qingdao-spb-40hc-2026-06.source.json
 npm run rates:validate -- data/sources/compiled/qingdao-spb-40hc-2026-06.patch.json
 
+# 1b. Без браузера (локальная .app-data)
+npm run rates:apply -- data/sources/compiled/qingdao-spb-40hc-2026-06.patch.json
+npm run rates:smoke -- spb
+
 # 2. Dev-сервер
 npm run dev
 ```

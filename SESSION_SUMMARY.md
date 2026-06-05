@@ -1,78 +1,70 @@
 # SESSION_SUMMARY.md
 
-Handoff: 2026-06-05. Новая вкладка → `RESUME_PROMPT.md`.
+Handoff: 2026-06-06. Новая вкладка → `RESUME_PROMPT.md`.
 
 ## 1. Что уже сделано
 
-### Ставки из КП (этапы 1–4b, roadmap)
+### Roadmap ставок (этапы 1–6) — ✅ в `main`
 - План: `RATES_ROADMAP.md`; доки `docs/RATES_*.md`; промпт `prompts/rates-from-expediter.md`.
-- Примеры КП: `data/sources/examples/` (6 txt); черновик + patch: `drafts/`, `compiled/qingdao-spb-40hc-2026-06.*`.
-- Скрипты: `npm run rates:compile`, `rates:validate`, `rates:seed` (`lib/rates-compile.ts`, `lib/rates-validate.ts`).
-- JSON v2: `routes[]`, динамический `route_code`, ЕКБ/Казань, `enabled`, `other_russian_expenses_rub`, `mergeRatesPayload`, миграция при чтении.
-- «Новый расчёт»: только транспорт с ненулевым «До границы» (`hasPreBorderQuote`).
+- JSON v2, compile/validate/seed, diff импорта, «+ Маршрут», backup restore.
 
-### UI ставок
-- Админ-кнопки в хедере (`RatesHeaderAdmin`, `RatesAdminContext`) — не sticky.
-- Уведомление «Записано» — chip в хедере, 10 сек (`HeaderNotice`).
-- Desktop: 1 колонка в карточках; mobile: 2 колонки; grid для выравнения USD-полей.
-- Mobile-хедер: фикс. высота, subtitle `truncate`, **«Import calculator» всегда виден**.
-- Импорт JSON с `merge: true`; подписи НДС на desktop.
-- Превью diff импорта: `rates-import-diff`, `RatesImportPreview`, двухшаговый импорт в форме.
+### Этап 7 — 🟡 в процессе
+- **СПб:** draft+patch+validate ✅; **local** import+save+smoke ✅ (`rates:apply` + `rates:smoke spb`).
+- **Юг:** draft+patch+validate+import+save+smoke ✅ на **prod** (7 маршрутов, цифры сверены API).
+- **НСК/Омск:** draft+patch+validate ✅; **local** import+save+smoke ✅ (Panda ВСК 3200+210k, ПРР 20k).
+- CLI: `npm run rates:apply`, `npm run rates:smoke` — зеркало UI import+save+smoke для локальной `.app-data`.
 
-### Git
-- Ветка: `feat/rates-v2-cp-pipeline` (от `main`).
-- Коммит: `6f3a8f0` — 43 файла, working tree clean.
-- **Не запушено** — prod пока на старом `main`.
+### Git / prod
+- Ветка **`main`** = `a3b1fe6` (+ незакоммиченные файлы сессии).
+- **Prod:** код в GitHub обновлён; **деплой** (`update-imcalc.sh`) ещё не запускался.
+- **Prod ставки:** юг OK; **СПб старый** (26500 USD вместо 7950) — нужен UI-импорт patch на prod.
 
-## 2. Файлы (ключевые)
+## 2. Файлы (созданы / изменены в сессии)
 
 | Область | Пути |
 |---------|------|
-| Payload / миграция | `lib/rates-payload.ts`, `lib/rates-route-registry.ts`, `lib/rates-config.ts` |
-| Compile / validate | `lib/rates-compile.ts`, `lib/rates-validate.ts`, `scripts/compile-rates.ts`, `scripts/validate-rates.ts` |
-| UI | `components/RatesSettingsForm.tsx`, `RatesHeaderAdmin.tsx`, `RatesAdminContext.tsx`, `HeaderNotice.tsx`, `MobileHeader.tsx`, `AppShell.tsx` |
-| Страница | `app/settings/rates/page.tsx` |
-| Данные | `data/rates.seed.json`, `data/sources/` |
-| Доки | `RATES_ROADMAP.md`, `docs/`, `prompts/` |
+| CLI apply/smoke | `scripts/apply-rates-patch.ts`, `scripts/smoke-rates.ts`, `package.json` |
+| НСК КП | `drafts/qingdao-nsk-omsk-40hc-2026-06.source.json`, `compiled/qingdao-nsk-omsk-40hc-2026-06.patch.json` |
+| Чеклист / handoff | `STAGE7_CHECKLIST.md`, `SESSION_SUMMARY.md`, `RESUME_PROMPT.md`, `CHANGELOG.md` |
 
 ## 3. Решения
 
-- Охрана / «неопасный» в КП — игнорировать.
-- Фрахт USD; нет до/после границы в КП → 50/50 в compile.
-- Основной транспорт 40HC (`enabled: true`); остальное disabled/пусто.
-- Утверждение ставок — только UI «Ставки» → Сохранить (без авто-PUT в prod).
-- Perplexity — разбор КП; Cursor — compile/validate в репо.
-- n8n — reference-only, runtime не трогать.
-- Расчёты в localStorage; ставки в `.app-data` + `/api/rates`.
+| Тема | Правило |
+|------|---------|
+| НСК КП | Panda (ВСК 3200+210k) дешевле Gagntong (ВМТП 3000+238k) |
+| Омск | ~120k только в `meta.notes`, не в `lines_rub` |
+| CLI apply | `mergeRatesPayload` + `writeRatesPayload` = UI import+Сохранить |
+| Утверждение prod | UI «Ставки» → Сохранить (или PUT `/api/rates` с owner password) |
 
-## 4. Что осталось (roadmap 5–7)
+## 4. Что осталось
 
 | # | Задача | Статус |
 |---|--------|--------|
-| 5 | **Превью diff** перед сохранением импорта JSON | ✅ |
-| 6 | UI **«+ Маршрут»** в админке | ⬜ |
-| 6 | **Откат** из `rates.backup.json` | ⬜ |
-| 7 | Прогон накопленных КП → `data/sources/drafts/` | ⬜ |
-
-Инфра (отдельно): push ветки → деплой на VPS; cron бэкапа; OCR keys в prod.
+| 7a | СПб на **prod**: import patch → Сохранить → smoke | ⬜ |
+| 7b | НСК на **prod**: import `qingdao-nsk-omsk` patch → Сохранить | ⬜ |
+| 7c | Деплой VPS: `update-imcalc.sh` (новые скрипты rates:apply/smoke) | ⬜ |
+| 7d | СПб юани (`qingdao-spb-ktk-yuan`) | ⬜ |
+| 7e | Турция, Shanghai | ⬜ |
 
 ## 5. Блокеры / риски
 
-- **Prod отстаёт** — v2 только локально на `feat/rates-v2-cp-pipeline`, без push/merge.
-- **Откат backup** — скрипт на сервере есть; UI/API отката ещё нет.
-- **Публичный GET /api/rates** — OK для MVP, закрыть позже.
-- Merge-импорт: diff показывает только затронутые маршруты; settings — если есть в patch.
+- **Prod СПб** — старые цифры до импорта patch.
+- **Деплой** — ручной SSH на VPS; без него prod не получит `rates:apply`/`rates:smoke`.
+- **`.app-data`** — локальный apply; не коммитить.
 
 ## 6. Следующий лучший шаг
 
-**UI «+ Маршрут»** в админке ставок (roadmap этап 6) или прогон `qingdao-spb-40hc` patch через `/settings/rates`.
+1. **SSH VPS** → `update-imcalc.sh` (подтянуть код со скриптами).
+2. **Prod UI** → импорт `qingdao-spb-40hc-2026-06.patch.json` → Сохранить → `/calculations/new` smoke.
+3. То же для `qingdao-nsk-omsk-40hc-2026-06.patch.json`.
 
 ## 7. Проверка
 
 ```bash
-npm run dev
-npm run typecheck && npm run lint
+npm run rates:validate -- data/sources/compiled/qingdao-spb-40hc-2026-06.patch.json
+npm run rates:apply -- data/sources/compiled/qingdao-spb-40hc-2026-06.patch.json
+npm run rates:smoke -- spb
+npm run rates:smoke -- south
+npm run rates:smoke -- nsk
+npm run typecheck
 ```
-
-Маршруты: `/settings/rates` (mobile + desktop), `/calculations/new`.  
-Compile: `npm run rates:compile -- data/sources/drafts/qingdao-spb-40hc-2026-06.source.json`
