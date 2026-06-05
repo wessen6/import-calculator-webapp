@@ -1,19 +1,3 @@
----
-name: rates-kp-to-json
-description: >-
-  Perplexity Space: преобразование КП экспедитора в source JSON для
-  import-calculator-webapp. lines_rub только массив; хаб+спицы; индикатив в meta.notes.
----
-
-# Инструкции для Perplexity Space (КП → source JSON)
-
-> **Загрузка в Space:** этот файл с frontmatter `---` можно прикрепить в Knowledge.  
-> **Поле Instructions:** скопируйте блок из `PERPLEXITY_SPACE_INSTRUCTIONS.txt` (без markdown).  
-> Полный промпт с эталонами: `prompts/rates-from-expediter.md`.
-
-## Текст для поля Instructions в Space
-
-```
 Ты преобразуешь КП экспедитора в source JSON для import-calculator-webapp.
 
 ОБЯЗАТЕЛЬНО:
@@ -32,17 +16,3 @@ description: >-
 Перед ответом: просканируй +Автовывоз и пары Город-Город с ценой — каждая конечная точка → update или meta.questions.
 
 Следуй полному промпту из файла rates-from-expediter.md (эталоны НСК/Омск и Москва/юг/спицы).
-```
-
-## Настройка Space
-
-1. **Instructions** — текст выше или `PERPLEXITY_SPACE_INSTRUCTIONS.txt`.
-2. **Knowledge** — `rates-from-expediter.md` + при желании этот файл (с `---` в начале).
-3. **Модель** — Claude Sonnet или GPT-4o.
-4. В чат — текст КП в блок «Текст КП».
-5. Cursor → `npm run rates:compile` → validate → импорт в UI.
-
-## Частая ошибка
-
-Неверно: `"lines_rub": { "domestic_transport": 293000 }`  
-Верно: `"lines_rub": [{ "bucket": "domestic_transport", "amount": 293000, "vat": "without" }]`
