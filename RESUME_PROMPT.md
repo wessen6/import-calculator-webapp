@@ -8,15 +8,14 @@
 Продолжи Next.js import-calculator-webapp.
 
 Git: https://github.com/wessen6/import-calculator-webapp
-Ветка: main (7da30b2 pushed). Незакоммичено: merge-fix patch + промпт 30/70 + пересобранные compiled/*.patch.json.
-Prod: https://imcalc.wessen.online — СПб pre_border 7950 OK, вывоз 45k→30k; НСК 26500→3200 нужен import.
-Roadmap: RATES_ROADMAP.md | handoff: SESSION_SUMMARY.md | этап 7: docs/RATES_STAGE7_GUIDE.md
+Ветка: main (4b33900). Эталон ставок: prod (ручная правка 2026-06-08), не compiled patches.
+Prod: https://imcalc.wessen.online — 10 маршрутов с котировкой; ЕКБ/Казань без котировки.
+Dev: синхронизирован export prod → import dev.
 
-Готово: merge fix (patch не тянет seed 26500); local smoke spb/nsk/south ✅; промпт 30/70 в репо.
-Критично: deploy merge fix на VPS до prod import nsk.
+Roadmap: RATES_ROADMAP.md | handoff: SESSION_SUMMARY.md | чеклист: data/sources/STAGE7_CHECKLIST.md
 
-Следующий шаг: коммит → push → update-imcalc.sh → prod import spb (вывоз) + nsk → Perplexity Space.
-Чеклист: data/sources/STAGE7_CHECKLIST.md.
+Очередь P2: turkey-spb-msk-40hc, shanghai-msk-oreh-zuevo.
+Отложено: qingdao-spb-ktk-yuan.
 
 Не трогать n8n runtime. Не коммить без команды.
 ```

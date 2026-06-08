@@ -235,6 +235,52 @@ crontab -e
 15 3 * * * /usr/local/bin/imcalc-backup-rates.sh >> /var/log/imcalc-backup.log 2>&1
 ```
 
+Просмотр лога (не запускайте путь как команду — будет `Permission denied`):
+
+```bash
+sudo tail -30 /var/log/imcalc-backup.log
+```
+
+Каталог `/var/log` часто закрыт для обычного пользователя — нужен `sudo` или группа `adm`.
+
+Ручной бэкап перед крупным импортом:
+
+```bash
+sudo /usr/local/bin/imcalc-backup-rates.sh
+ls -la /var/backups/imcalc/
+```
+
+### Откат ставок
+
+| Ситуация | Действие |
+|----------|----------|
+| Только что нажали **Сохранить** и ошиблись | UI `/settings/rates` (админ) → **Восстановить из backup** — откат на снимок **перед последним** Save (`rates.backup.json`) |
+| Нужен вчерашний / недельный снимок | VPS: подставить файл из `/var/backups/imcalc/rates-YYYYMMDD-*.json` |
+| Dev после эксперимента | Export prod JSON → Import в локальный `/settings/rates` |
+
+**Откат на VPS из cron-бэкапа:**
+
+```bash
+# 1. Выбрать снимок (rates-*.json = полный rates.json на момент бэкапа)
+ls -lt /var/backups/imcalc/rates-*.json | head -5
+
+# 2. Сначала страховочная копия текущего
+sudo cp /var/lib/imcalc/app-data/rates.json /var/lib/imcalc/app-data/rates.before-restore.json
+
+# 3. Подставить выбранный снимок
+sudo cp /var/backups/imcalc/rates-20260608-142238.json /var/lib/imcalc/app-data/rates.json
+
+# 4. Перезапуск (подхватит файл без пересборки)
+sudo systemctl restart imcalc
+
+# 5. Проверка
+curl -s https://imcalc.wessen.online/api/rates | head -c 200
+```
+
+После отката в UI: откройте `/settings/rates` и убедитесь, что цифры совпадают с ожиданием.
+
+**Эталон:** актуальные ставки живут на prod (`rates.json`); репозиторий `compiled/*.patch.json` — цепочка КП, не замена prod.
+
 ---
 
 ## Маршрут НСК на prod
