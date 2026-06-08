@@ -14,8 +14,10 @@ import {
   addRouteConfigs,
   isRateConfigQuotable,
   mergeRatesPayload,
+  normalizePatchRateConfigs,
   normalizeRouteCode,
   normalizeRatesPayload,
+  type RatesPayload,
   type StoredRateConfig,
   type StoredRateSettings
 } from "@/lib/rates-payload";
@@ -48,8 +50,9 @@ type RatesExportPayload = {
 };
 
 function isRatesImportPayload(value: unknown): value is {
-  settings: StoredRateSettings;
+  settings?: StoredRateSettings;
   configs: StoredRateConfig[];
+  merge?: boolean;
   updated_at?: string | null;
 } {
   if (!value || typeof value !== "object") {
@@ -59,9 +62,18 @@ function isRatesImportPayload(value: unknown): value is {
   const payload = value as {
     settings?: unknown;
     configs?: unknown;
+    merge?: boolean;
   };
 
-  return Boolean(payload.settings) && Array.isArray(payload.configs);
+  if (!Array.isArray(payload.configs) || payload.configs.length === 0) {
+    return false;
+  }
+
+  if (payload.merge === true) {
+    return true;
+  }
+
+  return Boolean(payload.settings);
 }
 
 function groupConfigsByRoute(configs: StoredRateConfig[]) {
@@ -631,7 +643,7 @@ export function RatesSettingsForm() {
       const raw = JSON.parse(await file.text()) as unknown;
 
       if (!isRatesImportPayload(raw)) {
-        throw new Error("Неверный формат: нужны поля settings и configs.");
+        throw new Error("Неверный формат: нужен массив configs (для merge — merge: true).");
       }
 
       const isMerge =
@@ -642,13 +654,25 @@ export function RatesSettingsForm() {
         updated_at: updatedAt,
         version: 2
       });
-      const patch = normalizeRatesPayload(raw);
-      const merged = isMerge
-        ? mergeRatesPayload(currentPayload, patch)
-        : patch;
+      const patchConfigs = normalizePatchRateConfigs(
+        raw && typeof raw === "object" ? (raw as { configs?: unknown }).configs : undefined
+      );
+      const merged: RatesPayload = isMerge
+        ? mergeRatesPayload(currentPayload, {
+            settings:
+              raw && typeof raw === "object"
+                ? ((raw as { settings?: Partial<StoredRateSettings> }).settings ?? undefined)
+                : undefined,
+            configs: patchConfigs,
+            routes:
+              raw && typeof raw === "object"
+                ? (raw as { routes?: RatesPayload["routes"] }).routes
+                : undefined
+          })
+        : normalizeRatesPayload(raw);
       const diff = buildRatesImportDiff(currentPayload, merged, {
         isMerge,
-        patchConfigKeys: isMerge ? getPatchConfigKeys(patch.configs) : undefined
+        patchConfigKeys: isMerge ? getPatchConfigKeys(patchConfigs) : undefined
       });
 
       setPendingImport({

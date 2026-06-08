@@ -1,6 +1,12 @@
 import { readFileSync } from "fs";
 import path from "path";
-import { mergeRatesPayload, normalizeRatesPayload } from "../lib/rates-payload";
+import {
+  mergeRatesPayload,
+  normalizePatchRateConfigs,
+  normalizeRatesPayload,
+  type RatesPayloadPatch,
+  type StoredRateSettings
+} from "../lib/rates-payload";
 import { readRatesPayload, writeRatesPayload } from "../lib/server-rates-store";
 import { assertValidRatesPayload } from "../lib/rates-validate";
 
@@ -18,22 +24,27 @@ const raw = JSON.parse(readFileSync(absolutePatch, "utf8")) as {
   configs?: unknown;
 };
 
-if (!raw.settings || !Array.isArray(raw.configs)) {
-  console.error("Invalid patch: need settings and configs.");
+if (!Array.isArray(raw.configs) || raw.configs.length === 0) {
+  console.error("Invalid patch: need non-empty configs.");
   process.exit(1);
 }
 
 async function main() {
   const isMerge = raw.merge === true;
   const current = await readRatesPayload();
-  const patch = normalizeRatesPayload(raw);
-  const merged = isMerge ? mergeRatesPayload(current, patch) : patch;
+  const patchConfigs = normalizePatchRateConfigs(raw.configs);
+  const merged = isMerge
+    ? mergeRatesPayload(current, {
+        settings: raw.settings as Partial<StoredRateSettings> | undefined,
+        configs: patchConfigs
+      } satisfies RatesPayloadPatch)
+    : normalizeRatesPayload(raw);
 
   assertValidRatesPayload(merged);
 
   const saved = await writeRatesPayload(merged);
   const touchedRoutes = new Set(
-    patch.configs
+    patchConfigs
       .filter((config) => config.enabled !== false && config.pre_border_expenses_foreign > 0)
       .map((config) => config.route_code)
   );

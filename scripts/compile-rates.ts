@@ -20,7 +20,7 @@ const outDir = path.join(process.cwd(), "data", "sources", "compiled");
 mkdirSync(outDir, { recursive: true });
 const baseName = path.basename(absoluteInput).replace(/\.source\.json$/i, "");
 const outPath = path.join(outDir, `${baseName}.patch.json`);
-const patch = wrapCompiledPatch(compiled, raw.merge !== false);
+const patch = wrapCompiledPatch(compiled, raw);
 
 writeFileSync(outPath, JSON.stringify(patch, null, 2), "utf8");
 console.log("Wrote", outPath);

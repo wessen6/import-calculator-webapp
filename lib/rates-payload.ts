@@ -333,12 +333,12 @@ function isSettings(value: unknown): value is StoredRateSettings {
   );
 }
 
-export function normalizeRateConfigs(value: unknown): StoredRateConfig[] {
+function normalizeRateConfigEntries(value: unknown): StoredRateConfig[] {
   if (!Array.isArray(value)) {
-    return getDefaultRateConfigs();
+    return [];
   }
 
-  const configs = value.filter(isRateConfig).map((config) => {
+  return value.filter(isRateConfig).map((config) => {
     const template = getImportRateTemplate(config.route_code);
     const defaults = fromImportConfig(
       {
@@ -403,6 +403,15 @@ export function normalizeRateConfigs(value: unknown): StoredRateConfig[] {
 
     return sanitizeInactiveConfig(normalized);
   });
+}
+
+/** Нормализация configs из patch JSON — без дополнения seed-маршрутами. */
+export function normalizePatchRateConfigs(value: unknown): StoredRateConfig[] {
+  return normalizeRateConfigEntries(value);
+}
+
+export function normalizeRateConfigs(value: unknown): StoredRateConfig[] {
+  const configs = normalizeRateConfigEntries(value);
 
   return configs.length > 0 ? ensureCompleteConfigs(configs) : getDefaultRateConfigs();
 }
@@ -516,10 +525,16 @@ function configKey(routeCode: string, transportType: string) {
   return `${routeCode}::${transportType}`;
 }
 
+export type RatesPayloadPatch = Partial<Omit<RatesPayload, "settings">> & {
+  settings?: Partial<StoredRateSettings>;
+};
+
 /** Частичное обновление: только переданные configs/settings. */
-export function mergeRatesPayload(current: RatesPayload, patch: Partial<RatesPayload>): RatesPayload {
-  const settings = patch.settings ? normalizeRateSettings(patch.settings) : current.settings;
-  const patchConfigs = patch.configs ? normalizeRateConfigs(patch.configs) : [];
+export function mergeRatesPayload(current: RatesPayload, patch: RatesPayloadPatch): RatesPayload {
+  const settings = patch.settings
+    ? normalizeRateSettings({ ...current.settings, ...patch.settings })
+    : current.settings;
+  const patchConfigs = patch.configs ? normalizePatchRateConfigs(patch.configs) : [];
   const map = new Map(current.configs.map((c) => [configKey(c.route_code, c.transport_type), c]));
 
   for (const config of patchConfigs) {

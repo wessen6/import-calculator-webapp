@@ -1,6 +1,6 @@
 import { getImportRateTemplate, TRANSPORT_TYPE_OPTIONS } from "./rates-config";
+import { mergeRouteMetas } from "./rates-route-registry";
 import {
-  finalizeRatesPayload,
   getDefaultRateSettings,
   type RatesPayload,
   type StoredRateConfig,
@@ -203,19 +203,35 @@ export function compileSourceDocument(source: SourceRatesDocument): RatesPayload
     configs.push(config);
   }
 
-  return finalizeRatesPayload({
+  return {
+    version: 2,
+    routes: mergeRouteMetas([], configs),
     settings,
     configs,
     updated_at: null
-  });
+  };
 }
 
-export function wrapCompiledPatch(payload: RatesPayload, merge = true) {
-  return {
+export function wrapCompiledPatch(payload: RatesPayload, source: SourceRatesDocument) {
+  const patch: {
+    version: 2;
+    merge: boolean;
+    routes?: RatesPayload["routes"];
+    settings?: Partial<StoredRateSettings>;
+    configs: StoredRateConfig[];
+  } = {
     version: 2,
-    merge,
-    routes: payload.routes,
-    settings: payload.settings,
+    merge: source.merge !== false,
     configs: payload.configs
   };
+
+  if (source.settings_patch && Object.keys(source.settings_patch).length > 0) {
+    patch.settings = source.settings_patch;
+  }
+
+  if (payload.routes && payload.routes.length > 0) {
+    patch.routes = payload.routes;
+  }
+
+  return patch;
 }

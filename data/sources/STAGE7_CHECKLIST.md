@@ -35,5 +35,7 @@ _Маршруты южного patch появились в форме автом
 
 - 2026-06-05: `qingdao-south-40hc` — импорт patch в UI успешен, 7 направлений, маршруты в карточках без ручного «+ Маршрут».
 - 2026-06-06: CLI `rates:apply` + `rates:smoke` — локальный прогон spb/south/nsk без браузера (эквивалент import+save+smoke).
-- **Prod:** юг сохранён (vladivostok 2600, msk 3300+293k+60k). **СПб на prod ещё старый** (26500 USD) — нужен импорт `qingdao-spb-40hc` patch + Сохранить.
-- Perplexity Space: Instructions — `prompts/PERPLEXITY_SPACE_INSTRUCTIONS.txt`; Knowledge — `rates-from-expediter.md` (`.md` с `---` в начале).
+- **Prod (2026-06-08):** юг OK; **СПб pre_border 7950** уже на prod, но вывоз 45k (patch → 30k); **НСК 26500** — import `qingdao-nsk-omsk` patch.
+- **Merge fix (2026-06-08):** patch больше не подмешивает seed 26500 — обязателен deploy до prod import nsk.
+- Perplexity Space: Instructions — `PERPLEXITY_SPACE_INSTRUCTIONS.txt`; Knowledge — `rates-from-expediter.md` (вручную).
+- Коммит (merge fix + промпт + patches) ⬜.

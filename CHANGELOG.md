@@ -6,6 +6,28 @@
 
 ---
 
+## 2026-06-08 (patch merge: только затронутые маршруты)
+
+### Исправлено
+
+- `compile` / `merge` / UI import / `rates:apply`: частичный patch больше не подмешивает seed-маршруты (26500 USD) и полные `settings` из defaults.
+- `wrapCompiledPatch` — в JSON только `settings_patch` и `updates[]`; пересобраны `compiled/*.patch.json` (spb: 1 config, nsk: 1, south: 7).
+
+### Изменено (не закоммичено)
+
+- `prompts/rates-from-expediter.md` — `lump_sum_usd` + `split_pre_border_ratio: 0.3` для прямого ЖД/моря.
+- `PERPLEXITY_SPACE_INSTRUCTIONS.txt/.md`, `docs/RATES_FIELD_MAP.md`.
+
+---
+
+## 2026-06-06 (запушено `7da30b2`)
+
+### Исправлено
+
+- «Новый расчёт»: `Number.isFinite` + `formatRub` — «Расходы РФ» не пустеют при цене с запятой.
+
+---
+
 ## 2026-06-06 (этап 7: CLI apply/smoke, НСК КП)
 
 ### Добавлено
