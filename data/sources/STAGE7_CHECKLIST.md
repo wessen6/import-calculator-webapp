@@ -69,4 +69,6 @@ _Пустое «До границы» = маршрут в списке, коти
 - Perplexity Space обновлён (30/70, Instructions + Knowledge).
 - **Очередь P2:** `turkey-spb-msk-40hc`, `shanghai-msk-oreh-zuevo` (новые route_code / маршруты в UI).
 - **Отложено:** `qingdao-spb-ktk-yuan` (юани).
-- **P3 (будущее):** пошлина ТН ВЭД, Supabase, cron бэкапа на VPS, закрыть публичный GET `/api/rates`.
+- **Очередь (инструменты):** обновить `npm run rates:smoke` под prod-эталон (таблица выше), не под `compiled/*.patch.json`.
+- cron бэкапа на VPS ✅ (`/var/backups/imcalc/`).
+- **P3 (будущее):** пошлина ТН ВЭД, Supabase, закрыть публичный GET `/api/rates`.
