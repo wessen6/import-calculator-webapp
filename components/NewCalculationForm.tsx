@@ -2,7 +2,8 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { formatDateTime } from "@/lib/format";
+import { LoadingDots } from "@/components/LoadingDots";
+import { formatDateTime, formatExchangeRate } from "@/lib/format";
 import { getEffectiveConfigUpdatedAt } from "@/lib/rates-display";
 import {
   hasPreBorderQuote,
@@ -75,8 +76,12 @@ export function NewCalculationForm() {
   const [isAwaitingRecognitionConfirmation, setIsAwaitingRecognitionConfirmation] = useState(false);
   const [highlightedFields, setHighlightedFields] = useState<HighlightedField[]>([]);
   const [isSubmitButtonVisible, setIsSubmitButtonVisible] = useState(false);
-  const [selectedExchangeRate, setSelectedExchangeRate] = useState<number | null>(null);
   const [usdExchangeRate, setUsdExchangeRate] = useState<number | null>(null);
+  const [ratesStatus, setRatesStatus] = useState<"loading" | "ready" | "error">("loading");
+  const [exchangeRate, setExchangeRate] = useState<{
+    currency: CurrencyCode;
+    value: number | null;
+  } | null>(null);
   const selectableConfigs = rateConfigs.filter(isRateSelectableInCalculation);
   const routeOptions = selectableConfigs.filter(
     (route, index, routes) =>
@@ -111,8 +116,12 @@ export function NewCalculationForm() {
         setRateSettings(normalized.settings);
         setRatesUpdatedAt(normalized.updated_at ?? null);
         setSelectedRoute(configs[0] ?? null);
+        setRatesStatus("ready");
       })
-      .catch(() => setFormError("Не удалось загрузить ставки маршрутов."));
+      .catch(() => {
+        setFormError("Не удалось загрузить ставки маршрутов.");
+        setRatesStatus("error");
+      });
   }, []);
 
   const fetchExchangeRate = useCallback(async function fetchExchangeRate(currency: CurrencyCode) {
@@ -136,7 +145,7 @@ export function NewCalculationForm() {
   }, [fetchExchangeRate, getManualRate]);
 
   useEffect(() => {
-    if (!rateSettings) {
+    if (!rateSettings || currency === "RUB") {
       return;
     }
 
@@ -144,10 +153,10 @@ export function NewCalculationForm() {
 
     resolveExchangeRate(currency)
       .then((rate) => {
-        if (isMounted) setSelectedExchangeRate(rate);
+        if (isMounted) setExchangeRate({ currency, value: rate });
       })
       .catch(() => {
-        if (isMounted) setSelectedExchangeRate(null);
+        if (isMounted) setExchangeRate({ currency, value: null });
       });
 
     return () => {
@@ -366,6 +375,8 @@ export function NewCalculationForm() {
     usdExchangeRate !== null ? preBorderExpensesUsd * usdExchangeRate : null;
   const parsedQuantity = parseDecimalString(quantity);
   const parsedUnitPrice = parseDecimalString(unitPrice);
+  const selectedExchangeRate =
+    exchangeRate?.currency === currency ? exchangeRate.value : null;
   const invoiceTotalRub =
     selectedExchangeRate !== null &&
     Number.isFinite(selectedExchangeRate) &&
@@ -393,6 +404,20 @@ export function NewCalculationForm() {
     }`;
   const readOnlyFieldClassName =
     "mt-2 w-full cursor-default rounded-2xl border border-dashed border-stone-300 bg-stone-100 px-4 py-3 text-base font-semibold text-stone-600 outline-none";
+  const isRatesLoading = ratesStatus === "loading";
+  const isManualExchangeRate = getManualRate(currency) !== null;
+  const isExchangeRateLoading =
+    currency !== "RUB" &&
+    rateSettings !== null &&
+    (exchangeRate === null || exchangeRate.currency !== currency);
+  const exchangeRateDisplay =
+    currency === "RUB"
+      ? "—"
+      : isExchangeRateLoading
+        ? null
+        : selectedExchangeRate !== null
+          ? formatExchangeRate(selectedExchangeRate)
+          : "—";
 
   return (
     <form
@@ -456,27 +481,55 @@ export function NewCalculationForm() {
           </div>
         </div>
 
-        <div className="mt-4">
-          <label className="text-sm font-semibold text-stone-900" htmlFor="currency">
-            Валюта
-          </label>
-          <select
-            id="currency"
-            name="currency"
-            value={currency}
-            onChange={(event) => {
-              setCurrency(event.target.value as CurrencyCode);
-              triggerFieldHighlight(["currency"]);
-            }}
-            className={getFieldClassName("currency")}
-          >
-            {currencies.map((currency) => (
-              <option key={currency} value={currency}>
-                {currency}
-              </option>
-            ))}
-          </select>
+        <div className="mt-4 grid grid-cols-2 gap-3">
+          <div>
+            <label className="text-sm font-semibold text-stone-900" htmlFor="currency">
+              Валюта
+            </label>
+            <select
+              id="currency"
+              name="currency"
+              value={currency}
+              onChange={(event) => {
+                setCurrency(event.target.value as CurrencyCode);
+                triggerFieldHighlight(["currency"]);
+              }}
+              className={getFieldClassName("currency")}
+            >
+              {currencies.map((currency) => (
+                <option key={currency} value={currency}>
+                  {currency}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="text-sm font-semibold text-stone-700" htmlFor="exchange_rate_display">
+              Курс ЦБ
+            </label>
+            <div
+              id="exchange_rate_display"
+              className={`${readOnlyFieldClassName} flex min-h-[3.25rem] items-center`}
+              aria-live="polite"
+            >
+              {exchangeRateDisplay === null ? (
+                <LoadingDots className="text-stone-400" />
+              ) : (
+                exchangeRateDisplay
+              )}
+            </div>
+            {isManualExchangeRate && currency !== "RUB" ? (
+              <p className="mt-1 text-xs text-stone-400">ручной</p>
+            ) : null}
+          </div>
         </div>
+
+        {isRatesLoading ? (
+          <p className="mt-4 flex items-center gap-2 text-sm text-stone-500">
+            <LoadingDots className="text-stone-400" />
+            Загружаем ставки маршрутов
+          </p>
+        ) : null}
 
         <div className="mt-4 flex items-center justify-between gap-2">
           <span className="text-sm font-semibold text-stone-900">Маршрут и перевозка</span>
@@ -638,7 +691,14 @@ export function NewCalculationForm() {
             disabled={isExtracting}
             className="mt-4 w-full rounded-full border border-stone-200 bg-stone-50 px-5 py-3 text-sm font-semibold text-stone-700 disabled:cursor-not-allowed disabled:text-stone-400"
           >
-            {isExtracting ? "Распознаём файл..." : "Распознать данные из файла"}
+            {isExtracting ? (
+              <span className="inline-flex items-center justify-center gap-2">
+                <LoadingDots />
+                Распознаём файл
+              </span>
+            ) : (
+              "Распознать данные из файла"
+            )}
           </button>
         </section>
 
@@ -654,11 +714,16 @@ export function NewCalculationForm() {
           disabled={isSubmitting}
           className="w-full rounded-full bg-stone-950 px-5 py-4 text-base font-semibold text-white shadow-sm disabled:cursor-not-allowed disabled:bg-stone-400"
         >
-          {isSubmitting
-            ? "Создаём расчёт..."
-            : isAwaitingRecognitionConfirmation
-              ? "Подтвердить и рассчитать"
-              : "Создать расчёт"}
+          {isSubmitting ? (
+            <span className="inline-flex items-center justify-center gap-2">
+              <LoadingDots />
+              Создаём расчёт
+            </span>
+          ) : isAwaitingRecognitionConfirmation ? (
+            "Подтвердить и рассчитать"
+          ) : (
+            "Создать расчёт"
+          )}
         </button>
       </div>
       <button
@@ -670,7 +735,14 @@ export function NewCalculationForm() {
             : "translate-y-0 opacity-100"
         }`}
       >
-        {isSubmitting ? "Считаем..." : "Рассчитать"}
+        {isSubmitting ? (
+          <span className="inline-flex items-center gap-2">
+            <LoadingDots />
+            Считаем
+          </span>
+        ) : (
+          "Рассчитать"
+        )}
       </button>
     </form>
   );

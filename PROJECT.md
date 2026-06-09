@@ -27,7 +27,7 @@ app/                          # страницы и API (frontend + backend в �
   calculations/               # список, new, [id]
   settings/rates/             # UI ставок
   layout.tsx, page.tsx, globals.css
-components/                   # UI-компоненты (карточки, формы, навигация)
+components/                   # UI-компоненты (карточки, формы, навигация, LoadingDots)
 lib/                          # доменная логика, storage, rates, mock (dev)
   supabase/client.ts
 supabase/schema.sql           # будущая схема БД

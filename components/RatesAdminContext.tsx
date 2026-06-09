@@ -13,6 +13,8 @@ type RatesAdminContextValue = {
   setIsAdminMode: (value: boolean) => void;
   actions: RatesAdminActions | null;
   setActions: (actions: RatesAdminActions | null) => void;
+  hasUnsavedChanges: boolean;
+  setHasUnsavedChanges: (value: boolean) => void;
 };
 
 const RatesAdminContext = createContext<RatesAdminContextValue | null>(null);
@@ -20,15 +22,18 @@ const RatesAdminContext = createContext<RatesAdminContextValue | null>(null);
 export function RatesAdminProvider({ children }: { children: ReactNode }) {
   const [isAdminMode, setIsAdminMode] = useState(false);
   const [actions, setActions] = useState<RatesAdminActions | null>(null);
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
 
   const value = useMemo(
     () => ({
       isAdminMode,
       setIsAdminMode,
       actions,
-      setActions
+      setActions,
+      hasUnsavedChanges,
+      setHasUnsavedChanges
     }),
-    [isAdminMode, actions]
+    [isAdminMode, actions, hasUnsavedChanges]
   );
 
   return <RatesAdminContext.Provider value={value}>{children}</RatesAdminContext.Provider>;

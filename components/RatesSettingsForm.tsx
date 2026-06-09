@@ -128,8 +128,40 @@ type PendingImport = {
   diff: RatesImportDiff;
 };
 
+const fieldHighlightActiveClass =
+  "border-emerald-400 bg-emerald-50 shadow-[0_0_0_5px_rgba(16,185,129,0.14)]";
+
+function mapSettingsDiffFieldToFormKey(field: string) {
+  if (field === "customs_vat_rate") {
+    return "vat_rate";
+  }
+
+  return field;
+}
+
+function collectImportHighlightFields(diff: RatesImportDiff) {
+  const fields = new Set<string>();
+
+  for (const change of diff.settingsChanges) {
+    fields.add(mapSettingsDiffFieldToFormKey(change.field));
+  }
+
+  for (const configDiff of diff.configDiffs) {
+    for (const change of configDiff.changes) {
+      if (change.field === "route_label" || change.field === "enabled") {
+        continue;
+      }
+
+      fields.add(`${configDiff.route_code}-${configDiff.transport_type}-${change.field}`);
+    }
+  }
+
+  return Array.from(fields);
+}
+
 export function RatesSettingsForm() {
   const importInputRef = useRef<HTMLInputElement | null>(null);
+  const highlightTimeoutRef = useRef<number | null>(null);
   const [settings, setSettings] = useState<StoredRateSettings | null>(null);
   const [configs, setConfigs] = useState<StoredRateConfig[]>([]);
   const [ownerPassword, setOwnerPassword] = useState("");
@@ -138,8 +170,14 @@ export function RatesSettingsForm() {
   const [importMessage, setImportMessage] = useState<string | null>(null);
   const [importMessageTone, setImportMessageTone] = useState<"info" | "success" | "error">("info");
   const { showSavedNotice, clearNotice } = useHeaderNotice();
-  const { setIsAdminMode: setHeaderAdminMode, setActions: setHeaderAdminActions } = useRatesAdmin();
+  const {
+    setIsAdminMode: setHeaderAdminMode,
+    setActions: setHeaderAdminActions,
+    setHasUnsavedChanges
+  } = useRatesAdmin();
   const [preImportSnapshot, setPreImportSnapshot] = useState<FormSnapshot | null>(null);
+  const [savedSnapshot, setSavedSnapshot] = useState<FormSnapshot | null>(null);
+  const [highlightedFields, setHighlightedFields] = useState<string[]>([]);
   const [pendingImport, setPendingImport] = useState<PendingImport | null>(null);
   const [updatedAt, setUpdatedAt] = useState<string | null>(null);
   const [draftInputs, setDraftInputs] = useState<Record<string, string>>({});
@@ -164,9 +202,61 @@ export function RatesSettingsForm() {
         setSettings(normalized.settings);
         setConfigs(normalized.configs);
         setUpdatedAt(normalized.updated_at ?? null);
+        setSavedSnapshot({
+          settings: normalized.settings,
+          configs: normalized.configs,
+          updatedAt: normalized.updated_at ?? null
+        });
       })
       .catch(() => setError("Не удалось загрузить ставки."));
   }, []);
+
+  useEffect(() => {
+    if (!savedSnapshot || !settings) {
+      setHasUnsavedChanges(false);
+      return;
+    }
+
+    const currentPayload = JSON.stringify(
+      normalizeRatesPayload({ settings, configs, updated_at: updatedAt, version: 2 })
+    );
+    const savedPayload = JSON.stringify(
+      normalizeRatesPayload({
+        settings: savedSnapshot.settings,
+        configs: savedSnapshot.configs,
+        updated_at: savedSnapshot.updatedAt,
+        version: 2
+      })
+    );
+
+    setHasUnsavedChanges(currentPayload !== savedPayload);
+  }, [settings, configs, updatedAt, savedSnapshot, setHasUnsavedChanges]);
+
+  function triggerFieldHighlight(fields: string[]) {
+    if (highlightTimeoutRef.current) {
+      window.clearTimeout(highlightTimeoutRef.current);
+    }
+
+    setHighlightedFields(fields);
+    highlightTimeoutRef.current = window.setTimeout(() => {
+      setHighlightedFields([]);
+      highlightTimeoutRef.current = null;
+    }, 1200);
+  }
+
+  function isFieldHighlighted(fieldKey: string) {
+    return highlightedFields.includes(fieldKey);
+  }
+
+  function getEditableFieldClass(fieldKey: string, extraClassName?: string) {
+    return clsx(
+      "outline-none transition-all duration-300 ease-out",
+      extraClassName,
+      isFieldHighlighted(fieldKey)
+        ? fieldHighlightActiveClass
+        : "border-stone-200 bg-stone-50 focus:border-stone-400 focus:bg-white"
+    );
+  }
 
   function updateConfig(
     routeCode: StoredRateConfig["route_code"],
@@ -204,6 +294,7 @@ export function RatesSettingsForm() {
 
   function updateDraftValue(key: string, value: string, onValidNumber: (value: number) => void) {
     setDraftInputs((current) => ({ ...current, [key]: value }));
+    triggerFieldHighlight([key]);
     const parsed = parseInputNumber(value);
 
     if (parsed !== null) {
@@ -219,14 +310,22 @@ export function RatesSettingsForm() {
     });
   }
 
-  function renderVatSelect(value: VatMode, onChange: (value: VatMode) => void) {
+  function renderVatSelect(
+    value: VatMode,
+    onChange: (value: VatMode) => void,
+    fieldKey: string
+  ) {
     return (
       <select
         value={value}
         disabled={!isAdminMode}
-        onChange={(event) => onChange(event.target.value === "with_vat" ? "with_vat" : "without_vat")}
+        onChange={(event) => {
+          onChange(event.target.value === "with_vat" ? "with_vat" : "without_vat");
+          triggerFieldHighlight([fieldKey]);
+        }}
         className={clsx(
-          "w-full rounded-b-2xl border border-t-0 border-stone-200 bg-stone-50 px-3 py-3 text-sm outline-none transition focus:border-stone-400 focus:bg-white lg:w-[7.5rem] lg:shrink-0 lg:rounded-b-2xl lg:rounded-l-none lg:rounded-r-2xl lg:border-l-0 lg:border-t",
+          "w-full rounded-b-2xl border border-t-0 px-3 py-3 text-sm outline-none transition lg:w-[7.5rem] lg:shrink-0 lg:rounded-b-2xl lg:rounded-l-none lg:rounded-r-2xl lg:border-l-0 lg:border-t",
+          getEditableFieldClass(fieldKey),
           readOnlyFieldClass
         )}
       >
@@ -257,7 +356,8 @@ export function RatesSettingsForm() {
             updateDraftValue(fieldKey, event.target.value, (nextValue) => onValueChange(nextValue / 100))
           }
           className={clsx(
-            "min-w-0 flex-1 rounded-l-2xl border border-stone-200 bg-stone-50 px-3 py-3 text-base outline-none transition focus:border-stone-400 focus:bg-white",
+            "min-w-0 flex-1 rounded-l-2xl border px-3 py-3 text-base",
+            getEditableFieldClass(fieldKey),
             readOnlyFieldClass
           )}
         />
@@ -269,11 +369,13 @@ export function RatesSettingsForm() {
   }
 
   function renderRubVatControl({
+    fieldKey,
     value,
     vatMode,
     onValueChange,
     onVatModeChange
   }: {
+    fieldKey: string;
     value: number;
     vatMode: VatMode;
     onValueChange: (value: number) => void;
@@ -288,13 +390,17 @@ export function RatesSettingsForm() {
             step="0.01"
             disabled={!isAdminMode}
             value={value}
-            onChange={(event) => onValueChange(Number(event.target.value))}
+            onChange={(event) => {
+              onValueChange(Number(event.target.value));
+              triggerFieldHighlight([fieldKey]);
+            }}
             className={clsx(
-              "min-w-0 w-full rounded-t-2xl border border-stone-200 bg-stone-50 px-3 py-3 text-base outline-none transition focus:border-stone-400 focus:bg-white lg:flex-1 lg:rounded-b-none lg:rounded-l-2xl lg:rounded-r-none",
+              "min-w-0 w-full rounded-t-2xl border px-3 py-3 text-base outline-none transition lg:flex-1 lg:rounded-b-none lg:rounded-l-2xl lg:rounded-r-none",
+              getEditableFieldClass(fieldKey),
               readOnlyFieldClass
             )}
           />
-          {renderVatSelect(vatMode, onVatModeChange)}
+          {renderVatSelect(vatMode, onVatModeChange, fieldKey)}
         </div>
         <p className="mt-1 hidden px-1 text-[11px] leading-snug text-stone-500 lg:block">
           {vatModeLabel(vatMode)}
@@ -487,6 +593,11 @@ export function RatesSettingsForm() {
     setConfigs(normalized.configs);
     setUpdatedAt(normalized.updated_at ?? null);
     setDraftInputs({});
+    setSavedSnapshot({
+      settings: normalized.settings,
+      configs: normalized.configs,
+      updatedAt: normalized.updated_at ?? null
+    });
     setOwnerVerified(true);
     showSavedNotice(normalized.updated_at ?? new Date().toISOString());
     setImportMessageTone("success");
@@ -537,6 +648,11 @@ export function RatesSettingsForm() {
     setConfigs(normalized.configs);
     const savedAt = normalized.updated_at ?? new Date().toISOString();
     setUpdatedAt(savedAt);
+    setSavedSnapshot({
+      settings: normalized.settings,
+      configs: normalized.configs,
+      updatedAt: savedAt
+    });
 
     setPreImportSnapshot(null);
     setOwnerVerified(true);
@@ -607,12 +723,13 @@ export function RatesSettingsForm() {
       updatedAt
     });
 
-    const { merged } = pendingImport;
+    const { merged, diff } = pendingImport;
     setSettings(merged.settings);
     setConfigs(merged.configs);
     setUpdatedAt(merged.updated_at ?? null);
     setDraftInputs({});
     setPendingImport(null);
+    triggerFieldHighlight(collectImportHighlightFields(diff));
     setImportMessageTone("info");
     setImportMessage(
       pendingImport.diff.hasChanges
@@ -707,6 +824,11 @@ export function RatesSettingsForm() {
         setSettings(normalized.settings);
         setConfigs(normalized.configs);
         setUpdatedAt(normalized.updated_at ?? null);
+        setSavedSnapshot({
+          settings: normalized.settings,
+          configs: normalized.configs,
+          updatedAt: normalized.updated_at ?? null
+        });
         setImportMessageTone("info");
         setImportMessage("Загружены сохранённые на сервере ставки.");
       });
@@ -769,7 +891,10 @@ export function RatesSettingsForm() {
                 )
               }
               className={clsx(
-                "min-w-0 flex-1 rounded-l-2xl border border-stone-200 bg-stone-50 px-3 py-3 text-base outline-none transition focus:border-stone-400 focus:bg-white",
+                "min-w-0 flex-1 rounded-l-2xl border px-3 py-3 text-base",
+                getEditableFieldClass(
+                  `${config.route_code}-${config.transport_type}-pre_border_expenses_foreign`
+                ),
                 readOnlyFieldClass
               )}
             />
@@ -802,7 +927,10 @@ export function RatesSettingsForm() {
                 )
               }
               className={clsx(
-                "min-w-0 flex-1 rounded-l-2xl border border-stone-200 bg-stone-50 px-3 py-3 text-base outline-none transition focus:border-stone-400 focus:bg-white",
+                "min-w-0 flex-1 rounded-l-2xl border px-3 py-3 text-base",
+                getEditableFieldClass(
+                  `${config.route_code}-${config.transport_type}-other_pre_border_expenses_foreign`
+                ),
                 readOnlyFieldClass
               )}
             />
@@ -816,6 +944,7 @@ export function RatesSettingsForm() {
           <div>
             <label className="text-sm font-semibold text-stone-900">Перевозка по РФ</label>
             {renderRubVatControl({
+              fieldKey: `${config.route_code}-${config.transport_type}-domestic_transport_rub`,
               value: config.domestic_transport_rub,
               vatMode: config.domestic_transport_vat_mode,
               onValueChange: (value) =>
@@ -831,6 +960,7 @@ export function RatesSettingsForm() {
           <div>
             <label className="text-sm font-semibold text-stone-900">Вывоз / простой</label>
             {renderRubVatControl({
+              fieldKey: `${config.route_code}-${config.transport_type}-pickup_delivery_demurrage_rub`,
               value: config.pickup_delivery_demurrage_rub,
               vatMode: config.pickup_delivery_demurrage_vat_mode,
               onValueChange: (value) =>
@@ -846,6 +976,7 @@ export function RatesSettingsForm() {
           <div>
             <label className="text-sm font-semibold text-stone-900">ПРР / порт</label>
             {renderRubVatControl({
+              fieldKey: `${config.route_code}-${config.transport_type}-port_operations_rub`,
               value: config.port_operations_rub,
               vatMode: config.port_operations_vat_mode,
               onValueChange: (value) =>
@@ -861,6 +992,7 @@ export function RatesSettingsForm() {
           <div>
             <label className="text-sm font-semibold text-stone-900">Хранение</label>
             {renderRubVatControl({
+              fieldKey: `${config.route_code}-${config.transport_type}-storage_rub`,
               value: config.storage_rub,
               vatMode: config.storage_vat_mode,
               onValueChange: (value) =>
@@ -876,6 +1008,7 @@ export function RatesSettingsForm() {
           <div className="col-span-2 lg:col-span-1">
             <label className="text-sm font-semibold text-stone-900">Прочие в РФ</label>
             {renderRubVatControl({
+              fieldKey: `${config.route_code}-${config.transport_type}-other_russian_expenses_rub`,
               value: config.other_russian_expenses_rub ?? 0,
               vatMode: config.other_russian_expenses_vat_mode ?? "without_vat",
               onValueChange: (value) =>
@@ -1057,13 +1190,15 @@ export function RatesSettingsForm() {
               <select
                 value={settings.allocation_method}
                 disabled={!isAdminMode}
-                onChange={(event) =>
+                onChange={(event) => {
                   updateSettings({
                     allocation_method: event.target.value === "value" ? "value" : "quantity"
-                  })
-                }
+                  });
+                  triggerFieldHighlight(["allocation_method"]);
+                }}
                 className={clsx(
-                  "mt-2 w-full rounded-2xl border border-stone-200 bg-stone-50 px-4 py-3 text-base outline-none transition focus:border-stone-400 focus:bg-white",
+                  "mt-2 w-full rounded-2xl border px-4 py-3 text-base",
+                  getEditableFieldClass("allocation_method"),
                   readOnlyFieldClass
                 )}
               >
@@ -1109,6 +1244,7 @@ export function RatesSettingsForm() {
                     const key = `manual_exchange_rate_${currency}`;
                     const value = event.target.value;
                     setDraftInputs((current) => ({ ...current, [key]: value }));
+                    triggerFieldHighlight([key]);
                     updateSettings({
                       manual_exchange_rates: {
                         ...settings.manual_exchange_rates,
@@ -1118,7 +1254,8 @@ export function RatesSettingsForm() {
                   }}
                   placeholder="ЦБ"
                   className={clsx(
-                    "mt-2 w-full rounded-2xl border border-stone-200 bg-stone-50 px-3 py-3 text-base outline-none transition focus:border-stone-400 focus:bg-white",
+                    "mt-2 w-full rounded-2xl border px-3 py-3 text-base",
+                    getEditableFieldClass(`manual_exchange_rate_${currency}`),
                     readOnlyFieldClass
                   )}
                 />
@@ -1132,6 +1269,7 @@ export function RatesSettingsForm() {
                 Экспедирование
               </label>
               {renderRubVatControl({
+                fieldKey: "forwarding_rub",
                 value: settings.forwarding_rub,
                 vatMode: settings.forwarding_vat_mode,
                 onValueChange: (value) => updateSettings({ forwarding_rub: value }),
@@ -1143,6 +1281,7 @@ export function RatesSettingsForm() {
                 Там. оформление
               </label>
               {renderRubVatControl({
+                fieldKey: "customs_clearance_rub",
                 value: settings.customs_clearance_rub,
                 vatMode: settings.customs_clearance_vat_mode,
                 onValueChange: (value) => updateSettings({ customs_clearance_rub: value }),

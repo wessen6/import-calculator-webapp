@@ -10,6 +10,7 @@ export function RatesHeaderAdmin() {
   }
 
   const { onSave, onReset, onExit } = context.actions;
+  const hasUnsavedChanges = context.hasUnsavedChanges;
 
   return (
     <div
@@ -32,7 +33,9 @@ export function RatesHeaderAdmin() {
       <button
         type="button"
         onClick={onSave}
-        className="h-8 rounded-full bg-stone-950 px-2.5 text-[11px] font-semibold text-white sm:px-3 sm:text-xs"
+        className={`h-8 rounded-full bg-stone-950 px-2.5 text-[11px] font-semibold text-white sm:px-3 sm:text-xs ${
+          hasUnsavedChanges ? "save-pulse" : ""
+        }`}
       >
         <span className="sm:hidden">Сохр.</span>
         <span className="hidden sm:inline">Сохранить</span>
