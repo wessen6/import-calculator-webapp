@@ -2,6 +2,7 @@
 
 import clsx from "clsx";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { formatDateTime } from "@/lib/format";
 import { getEffectiveConfigUpdatedAt } from "@/lib/rates-display";
 import { TRANSPORT_TYPE_OPTIONS } from "@/lib/rates-config";
@@ -166,11 +167,29 @@ function collectImportHighlightFields(diff: RatesImportDiff) {
   return Array.from(fields);
 }
 
-export function RatesSettingsForm() {
+type RatesSettingsFormProps = {
+  initialRates: RatesPayload;
+};
+
+function buildFormSnapshot(payload: RatesPayload): FormSnapshot {
+  const normalized = normalizeRatesPayload(payload);
+
+  return {
+    settings: normalized.settings,
+    configs: normalized.configs,
+    updatedAt: normalized.updated_at ?? null
+  };
+}
+
+export function RatesSettingsForm({ initialRates }: RatesSettingsFormProps) {
+  const router = useRouter();
+  const initialSnapshot = buildFormSnapshot(initialRates);
   const importInputRef = useRef<HTMLInputElement | null>(null);
   const highlightTimeoutRef = useRef<number | null>(null);
-  const [settings, setSettings] = useState<StoredRateSettings | null>(null);
-  const [configs, setConfigs] = useState<StoredRateConfig[]>([]);
+  const [settings, setSettings] = useState<StoredRateSettings | null>(
+    initialSnapshot.settings
+  );
+  const [configs, setConfigs] = useState<StoredRateConfig[]>(initialSnapshot.configs);
   const [ownerPassword, setOwnerPassword] = useState("");
   const [ownerVerified, setOwnerVerified] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -185,10 +204,10 @@ export function RatesSettingsForm() {
   } = useRatesAdmin();
   const [isLoggingIn, setIsLoggingIn] = useState(false);
   const [preImportSnapshot, setPreImportSnapshot] = useState<FormSnapshot | null>(null);
-  const [savedSnapshot, setSavedSnapshot] = useState<FormSnapshot | null>(null);
+  const [savedSnapshot, setSavedSnapshot] = useState<FormSnapshot | null>(initialSnapshot);
   const [highlightedFields, setHighlightedFields] = useState<string[]>([]);
   const [pendingImport, setPendingImport] = useState<PendingImport | null>(null);
-  const [updatedAt, setUpdatedAt] = useState<string | null>(null);
+  const [updatedAt, setUpdatedAt] = useState<string | null>(initialSnapshot.updatedAt);
   const [draftInputs, setDraftInputs] = useState<Record<string, string>>({});
   const [selectedTransportByRoute, setSelectedTransportByRoute] = useState<
     Partial<Record<RouteCode, TransportType>>
@@ -202,23 +221,6 @@ export function RatesSettingsForm() {
   const isAdminMode = ownerVerified && ownerPassword.length > 0;
   const readOnlyFieldClass =
     "disabled:cursor-not-allowed disabled:bg-stone-100 disabled:text-stone-700";
-
-  useEffect(() => {
-    fetch("/api/rates")
-      .then((response) => response.json())
-      .then((data: RatesApiResponse) => {
-        const normalized = normalizeRatesPayload(data);
-        setSettings(normalized.settings);
-        setConfigs(normalized.configs);
-        setUpdatedAt(normalized.updated_at ?? null);
-        setSavedSnapshot({
-          settings: normalized.settings,
-          configs: normalized.configs,
-          updatedAt: normalized.updated_at ?? null
-        });
-      })
-      .catch(() => setError("Не удалось загрузить ставки."));
-  }, []);
 
   useEffect(() => {
     if (!savedSnapshot || !settings) {
@@ -846,21 +848,17 @@ export function RatesSettingsForm() {
   function handleReset() {
     clearNotice();
     setPendingImport(null);
-    fetch("/api/rates")
-      .then((response) => response.json())
-      .then((data: RatesApiResponse) => {
-        const normalized = normalizeRatesPayload(data);
-        setSettings(normalized.settings);
-        setConfigs(normalized.configs);
-        setUpdatedAt(normalized.updated_at ?? null);
-        setSavedSnapshot({
-          settings: normalized.settings,
-          configs: normalized.configs,
-          updatedAt: normalized.updated_at ?? null
-        });
-        setImportMessageTone("info");
-        setImportMessage("Загружены сохранённые на сервере ставки.");
-      });
+    setDraftInputs({});
+
+    if (savedSnapshot) {
+      setSettings(savedSnapshot.settings);
+      setConfigs(savedSnapshot.configs);
+      setUpdatedAt(savedSnapshot.updatedAt);
+    }
+
+    router.refresh();
+    setImportMessageTone("info");
+    setImportMessage("Загружены сохранённые на сервере ставки.");
   }
 
   function getSelectedTransport(group: (typeof routeGroups)[number]) {

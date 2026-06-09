@@ -15,7 +15,14 @@ function isOwnerAuthorized(request: Request) {
   return request.headers.get("x-owner-password") === ownerPassword;
 }
 
-export async function GET() {
+export async function GET(request: Request) {
+  if (!isOwnerAuthorized(request)) {
+    return NextResponse.json(
+      { error: "Доступ к ставкам только для владельца." },
+      { status: 401 }
+    );
+  }
+
   const payload = await readRatesPayload();
 
   return NextResponse.json(payload, {

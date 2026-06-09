@@ -1,10 +1,15 @@
 import { AppShell } from "@/components/AppShell";
 import { NewCalculationForm } from "@/components/NewCalculationForm";
+import { readRatesPayload } from "@/lib/server-rates-store";
 
-export default function NewCalculationPage() {
+export const dynamic = "force-dynamic";
+
+export default async function NewCalculationPage() {
+  const initialRates = await readRatesPayload();
+
   return (
     <AppShell title="Новый расчёт" subtitle="Товар, цена, валюта и документы">
-      <NewCalculationForm />
+      <NewCalculationForm initialRates={initialRates} />
     </AppShell>
   );
 }

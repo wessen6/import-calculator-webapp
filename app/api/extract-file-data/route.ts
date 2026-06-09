@@ -3,6 +3,18 @@ import { NextResponse } from "next/server";
 
 const OCR_SPACE_URL = "https://api.ocr.space/parse/image";
 const OPENROUTER_CHAT_URL = "https://openrouter.ai/api/v1/chat/completions";
+const MAX_FILE_BYTES = 10 * 1024 * 1024;
+
+function getOpenRouterHttpReferer() {
+  const fromEnv =
+    process.env.OPENROUTER_HTTP_REFERER?.trim() || process.env.APP_URL?.trim();
+
+  if (fromEnv) {
+    return fromEnv.replace(/\/$/, "");
+  }
+
+  return "https://imcalc.wessen.online";
+}
 
 type ExtractedCalculationData = {
   product_name?: string;
@@ -190,7 +202,7 @@ async function parseInvoiceTextWithOpenRouter(text: string, apiKey: string) {
       headers: {
         authorization: `Bearer ${apiKey}`,
         "content-type": "application/json",
-        "http-referer": "http://localhost:3000",
+        "http-referer": getOpenRouterHttpReferer(),
         "x-title": "Import Calculator Web App"
       },
       body: JSON.stringify({
@@ -246,11 +258,27 @@ export async function POST(request: Request) {
     );
   }
 
+  const contentLength = request.headers.get("content-length");
+
+  if (contentLength && Number(contentLength) > MAX_FILE_BYTES) {
+    return NextResponse.json(
+      { error: "Файл слишком большой (макс. 10 МБ)." },
+      { status: 413 }
+    );
+  }
+
   const formData = await request.formData();
   const file = formData.get("file");
 
   if (!(file instanceof File) || file.size === 0) {
     return NextResponse.json({ error: "Файл не передан." }, { status: 400 });
+  }
+
+  if (file.size > MAX_FILE_BYTES) {
+    return NextResponse.json(
+      { error: "Файл слишком большой (макс. 10 МБ)." },
+      { status: 413 }
+    );
   }
 
   if (!isSupportedFile(file)) {

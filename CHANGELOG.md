@@ -6,6 +6,22 @@
 
 ---
 
+## 2026-06-09 (безопасность API)
+
+### Добавлено
+
+- `middleware.ts`: rate limit 10 req/min на `POST /api/extract-file-data`.
+- Лимит размера файла OCR: 10 МБ (413).
+- `APP_URL` / `OPENROUTER_HTTP_REFERER` для OpenRouter `http-referer`.
+
+### Изменено
+
+- Ставки на `/calculations/new` и `/settings/rates` — server-side `readRatesPayload()`, без публичного client fetch.
+- `GET /api/rates` — только с `x-owner-password` (401 без пароля).
+- `handleReset` в админке ставок — `router.refresh()` + сброс к `savedSnapshot`.
+
+---
+
 ## 2026-06-09 (карточка расчёта)
 
 ### Изменено

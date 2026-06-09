@@ -14,8 +14,8 @@ import {
   hasPreBorderQuote,
   isRateSelectableInCalculation,
   normalizeRatesPayload,
-  type StoredRateConfig,
-  type StoredRateSettings
+  type RatesPayload,
+  type StoredRateConfig
 } from "@/lib/rates-payload";
 import { createStoredCalculation, getFixedRussianExpensesRub } from "@/lib/storage";
 import type { CurrencyCode, RouteCode, TransportType } from "@/lib/types";
@@ -26,12 +26,6 @@ const currencies: CurrencyCode[] = ["CNY", "USD", "EUR", "RUB"];
 type ExchangeRateApiResponse = {
   rate?: number;
   error?: string;
-};
-
-type RatesApiResponse = {
-  configs?: StoredRateConfig[];
-  settings?: StoredRateSettings;
-  updated_at?: string | null;
 };
 
 type ExtractFileDataResponse = {
@@ -61,17 +55,27 @@ function parseDecimalString(value: string) {
   return Number.isFinite(parsed) ? parsed : null;
 }
 
-export function NewCalculationForm() {
+type NewCalculationFormProps = {
+  initialRates: RatesPayload;
+};
+
+export function NewCalculationForm({ initialRates }: NewCalculationFormProps) {
+  const normalizedInitialRates = normalizeRatesPayload(initialRates);
+  const initialSelectableConfigs = normalizedInitialRates.configs.filter(
+    isRateSelectableInCalculation
+  );
   const router = useRouter();
   const dataSectionRef = useRef<HTMLElement | null>(null);
   const submitButtonRef = useRef<HTMLButtonElement | null>(null);
   const highlightTimeoutRef = useRef<number | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
   const [needsManualRate, setNeedsManualRate] = useState(false);
-  const [rateConfigs, setRateConfigs] = useState<StoredRateConfig[]>([]);
-  const [rateSettings, setRateSettings] = useState<StoredRateSettings | null>(null);
-  const [ratesUpdatedAt, setRatesUpdatedAt] = useState<string | null>(null);
-  const [selectedRoute, setSelectedRoute] = useState<StoredRateConfig | null>(null);
+  const rateConfigs = normalizedInitialRates.configs;
+  const rateSettings = normalizedInitialRates.settings;
+  const ratesUpdatedAt = normalizedInitialRates.updated_at ?? null;
+  const [selectedRoute, setSelectedRoute] = useState<StoredRateConfig | null>(
+    initialSelectableConfigs[0] ?? null
+  );
   const [productName, setProductName] = useState("");
   const [quantity, setQuantity] = useState("");
   const [unitPrice, setUnitPrice] = useState("");
@@ -83,7 +87,6 @@ export function NewCalculationForm() {
   const [isSubmitButtonVisible, setIsSubmitButtonVisible] = useState(false);
   const [hasInvoiceFile, setHasInvoiceFile] = useState(false);
   const [usdExchangeRate, setUsdExchangeRate] = useState<number | null>(null);
-  const [ratesStatus, setRatesStatus] = useState<"loading" | "ready" | "error">("loading");
   const [exchangeRate, setExchangeRate] = useState<{
     currency: CurrencyCode;
     value: number | null;
@@ -112,24 +115,6 @@ export function NewCalculationForm() {
     }, 1200);
   }
 
-  useEffect(() => {
-    fetch("/api/rates")
-      .then((response) => response.json())
-      .then((data: RatesApiResponse) => {
-        const normalized = normalizeRatesPayload(data);
-        const configs = normalized.configs.filter(isRateSelectableInCalculation);
-        setRateConfigs(normalized.configs);
-        setRateSettings(normalized.settings);
-        setRatesUpdatedAt(normalized.updated_at ?? null);
-        setSelectedRoute(configs[0] ?? null);
-        setRatesStatus("ready");
-      })
-      .catch(() => {
-        setFormError("Не удалось загрузить ставки маршрутов.");
-        setRatesStatus("error");
-      });
-  }, []);
-
   const fetchExchangeRate = useCallback(async function fetchExchangeRate(currency: CurrencyCode) {
     const response = await fetch(`/api/exchange-rate?currency=${currency}`);
     const data = (await response.json()) as ExchangeRateApiResponse;
@@ -141,14 +126,18 @@ export function NewCalculationForm() {
     return data.rate;
   }, []);
 
-  const getManualRate = useCallback(function getManualRate(currency: CurrencyCode) {
-    const rate = rateSettings?.manual_exchange_rates[currency];
+  function getManualRate(currency: CurrencyCode) {
+    const rate = rateSettings.manual_exchange_rates[currency];
     return typeof rate === "number" && rate > 0 ? rate : null;
-  }, [rateSettings]);
+  }
 
   const resolveExchangeRate = useCallback(async function resolveExchangeRate(currency: CurrencyCode) {
-    return getManualRate(currency) ?? fetchExchangeRate(currency);
-  }, [fetchExchangeRate, getManualRate]);
+    const manual = normalizeRatesPayload(initialRates).settings.manual_exchange_rates[currency];
+    if (typeof manual === "number" && manual > 0) {
+      return manual;
+    }
+    return fetchExchangeRate(currency);
+  }, [fetchExchangeRate, initialRates]);
 
   useEffect(() => {
     if (!rateSettings || currency === "RUB") {
@@ -168,7 +157,7 @@ export function NewCalculationForm() {
     return () => {
       isMounted = false;
     };
-  }, [currency, rateSettings, resolveExchangeRate]);
+  }, [currency, initialRates, resolveExchangeRate]);
 
   useEffect(() => {
     if (!rateSettings) {
@@ -188,7 +177,7 @@ export function NewCalculationForm() {
     return () => {
       isMounted = false;
     };
-  }, [rateSettings, resolveExchangeRate]);
+  }, [initialRates, resolveExchangeRate]);
 
   useEffect(() => {
     const button = submitButtonRef.current;
@@ -430,7 +419,6 @@ export function NewCalculationForm() {
     `${getFieldClassName(field)} ${selectFieldClass}`;
   const readOnlyFieldClassName =
     "mt-2 w-full cursor-default rounded-2xl border border-dashed border-stone-300 bg-stone-100 px-4 py-3 text-base font-semibold text-stone-600 outline-none";
-  const isRatesLoading = ratesStatus === "loading";
   const isManualExchangeRate = getManualRate(currency) !== null;
   const isExchangeRateLoading =
     currency !== "RUB" &&
@@ -606,13 +594,6 @@ export function NewCalculationForm() {
             ) : null}
           </div>
         </div>
-
-        {isRatesLoading ? (
-          <p className="mt-4 flex items-center gap-2 text-sm text-stone-500">
-            <LoadingDots className="text-stone-400" />
-            Загружаем ставки маршрутов
-          </p>
-        ) : null}
 
         <div className="mt-4 flex items-center justify-between gap-2">
           <span className="text-sm font-semibold text-stone-900">Маршрут и перевозка</span>

@@ -273,8 +273,9 @@ sudo cp /var/backups/imcalc/rates-20260608-142238.json /var/lib/imcalc/app-data/
 # 4. Перезапуск (подхватит файл без пересборки)
 sudo systemctl restart imcalc
 
-# 5. Проверка
-curl -s https://imcalc.wessen.online/api/rates | head -c 200
+# 5. Проверка (ставки в UI или с паролем владельца)
+curl -s -o /dev/null -w "%{http_code}\n" https://imcalc.wessen.online/api/rates
+# ожидается 401 без x-owner-password
 ```
 
 После отката в UI: откройте `/settings/rates` и убедитесь, что цифры совпадают с ожиданием.
@@ -285,12 +286,12 @@ curl -s https://imcalc.wessen.online/api/rates | head -c 200
 
 ## Маршрут НСК на prod
 
-После `git pull` + `update-imcalc.sh` приложение при первом `GET /api/rates` переименует в `rates.json` старые подписи с «Новосибирск» → «Китай, Циндао → НСК» (с бэкапом в `rates.backup.json`).
+После `git pull` + `update-imcalc.sh` приложение при первом чтении ставок (страница расчёта/настроек или `readRatesPayload`) переименует в `rates.json` старые подписи с «Новосибирск» → «Китай, Циндао → НСК» (с бэкапом в `rates.backup.json`).
 
-Проверка:
+Проверка в UI `/settings/rates` или на сервере:
 
 ```bash
-curl -s https://imcalc.wessen.online/api/rates | jq '.configs[] | select(.route_code=="qingdao-novosibirsk") | .route_label' | sort -u
+jq '.configs[] | select(.route_code=="qingdao-novosibirsk") | .route_label' /var/lib/imcalc/app-data/rates.json | sort -u
 ```
 
 Ожидается только `"Китай, Циндао → НСК"`.
@@ -308,6 +309,8 @@ curl -s https://imcalc.wessen.online/api/rates | jq '.configs[] | select(.route_
 | `OCR_SPACE_API_KEY` | https://ocr.space/ocrapi |
 | `OPENROUTER_API_KEY` | https://openrouter.ai/keys |
 | `OPENROUTER_MODEL` | по умолчанию `openai/gpt-4o-mini` |
+| `APP_URL` | `https://imcalc.wessen.online` — для OpenRouter `http-referer` |
+| `OPENROUTER_HTTP_REFERER` | опционально, если нужен другой referer |
 
 ```bash
 nano /var/www/imcalc/app/.env.local
@@ -315,13 +318,22 @@ chmod 600 /var/www/imcalc/app/.env.local
 systemctl restart imcalc
 ```
 
-Проверка (без загрузки файла — только конфиг API):
+Проверка конфига API (без файла):
 
 ```bash
 curl -s -o /dev/null -w "%{http_code}\n" -X POST https://imcalc.wessen.online/api/extract-file-data
 ```
 
-`503` + текст про ключи — переменные пустые; `400`/`422` — ключи подхватились, нужен multipart с файлом.
+`501` + текст про ключи — переменные пустые; `400`/`422` — ключи подхватились, нужен multipart с файлом.
+
+Проверка с файлом (инвойс PDF/картинка):
+
+```bash
+curl -s -X POST https://imcalc.wessen.online/api/extract-file-data \
+  -F "file=@/path/to/invoice.pdf" | head -c 400
+```
+
+Ожидается JSON с полем `data` (название, количество, цена, валюта). Лимит: 10 запросов/мин на IP, файл до 10 МБ.
 
 ---
 
@@ -332,7 +344,8 @@ curl -s -o /dev/null -w "%{http_code}\n" -X POST https://imcalc.wessen.online/ap
 | `/calculations` | 200 |
 | `/calculations/new` | 200 |
 | `/settings/rates` | 200 |
-| `/api/rates` | 200, JSON |
+| `/api/rates` (без пароля) | 401 |
+| `/api/rates` (с `x-owner-password`) | 200, JSON |
 
 ---
 

@@ -9,9 +9,9 @@
 - [x] **Деплой на VPS (Beget)** — https://imcalc.wessen.online, Traefik + systemd, `APP_DATA_DIR`
   - [x] Доки: `deploy/DEPLOY.md`, `traefik-imcalc.yml`, `update-imcalc.sh`
   - [x] **cron бэкапа ставок** на VPS (`deploy/setup-backup-cron.sh`, `/var/backups/imcalc/`)
-  - [ ] НСК на prod: `git push` → `update-imcalc.sh` → авто при `GET /api/rates` (или `migrate-nsk-rates.sh`)
-  - [ ] OCR/OpenRouter ключи в prod `.env.local` (см. `deploy/DEPLOY.md` § OCR)
-- [ ] **Закрыть публичный `GET /api/rates`** — auth / API key (сейчас OK для MVP)
+  - [ ] НСК на prod: `git push` → `update-imcalc.sh` → авто при первом чтении ставок (или `migrate-nsk-rates.sh`)
+  - [x] OCR/OpenRouter ключи в prod `.env.local` (см. `deploy/DEPLOY.md` § OCR)
+- [x] **Закрыть публичный `GET /api/rates`** — RSC + `x-owner-password` на GET
 
 ## Ставки из КП (roadmap → `RATES_ROADMAP.md`)
 
