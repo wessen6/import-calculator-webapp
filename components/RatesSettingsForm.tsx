@@ -21,6 +21,7 @@ import {
   type StoredRateConfig,
   type StoredRateSettings
 } from "@/lib/rates-payload";
+import { LoadingDots } from "@/components/LoadingDots";
 import { useHeaderNotice } from "@/components/HeaderNotice";
 import { RatesImportPreview } from "@/components/RatesImportPreview";
 import { useRatesAdmin } from "@/components/RatesAdminContext";
@@ -173,8 +174,10 @@ export function RatesSettingsForm() {
   const {
     setIsAdminMode: setHeaderAdminMode,
     setActions: setHeaderAdminActions,
-    setHasUnsavedChanges
+    setHasUnsavedChanges,
+    setIsSaving
   } = useRatesAdmin();
+  const [isLoggingIn, setIsLoggingIn] = useState(false);
   const [preImportSnapshot, setPreImportSnapshot] = useState<FormSnapshot | null>(null);
   const [savedSnapshot, setSavedSnapshot] = useState<FormSnapshot | null>(null);
   const [highlightedFields, setHighlightedFields] = useState<string[]>([]);
@@ -513,11 +516,18 @@ export function RatesSettingsForm() {
           />
           <button
             type="button"
-            disabled={!hasPasswordDraft}
+            disabled={!hasPasswordDraft || isLoggingIn}
             onClick={() => void handleOwnerLogin()}
             className="h-8 shrink-0 rounded-full bg-stone-950 px-3 text-xs font-semibold text-white disabled:cursor-not-allowed disabled:bg-stone-400"
           >
-            Войти
+            {isLoggingIn ? (
+              <span className="inline-flex items-center gap-1">
+                <LoadingDots />
+                Вход
+              </span>
+            ) : (
+              "Войти"
+            )}
           </button>
         </div>
         <p className="mt-1 truncate text-[11px] text-stone-500">
@@ -528,19 +538,31 @@ export function RatesSettingsForm() {
   }
 
   async function handleOwnerLogin() {
-    const loggedIn = await persistRates({ loginOnly: true });
-    if (loggedIn !== null) {
-      setImportMessageTone("success");
-      setImportMessage("Вход выполнен. Можно редактировать и сохранять ставки.");
+    setIsLoggingIn(true);
+
+    try {
+      const loggedIn = await persistRates({ loginOnly: true });
+      if (loggedIn !== null) {
+        setImportMessageTone("success");
+        setImportMessage("Вход выполнен. Можно редактировать и сохранять ставки.");
+      }
+    } finally {
+      setIsLoggingIn(false);
     }
   }
 
   async function handleSave() {
-    const savedAt = await persistRates();
-    if (savedAt) {
-      showSavedNotice(savedAt);
-      setImportMessageTone("success");
-      setImportMessage("Ставки сохранены на сервере.");
+    setIsSaving(true);
+
+    try {
+      const savedAt = await persistRates();
+      if (savedAt) {
+        showSavedNotice(savedAt);
+        setImportMessageTone("success");
+        setImportMessage("Ставки сохранены на сервере.");
+      }
+    } finally {
+      setIsSaving(false);
     }
   }
 

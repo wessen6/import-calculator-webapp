@@ -2,8 +2,10 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { BusyOverlay, type BusyOverlayPhase } from "@/components/BusyOverlay";
 import { LoadingDots } from "@/components/LoadingDots";
 import { formatDateTime, formatExchangeRate } from "@/lib/format";
+import { sleep, useDelayedBusy, waitForPaint } from "@/lib/use-delayed-busy";
 import { getEffectiveConfigUpdatedAt } from "@/lib/rates-display";
 import {
   hasPreBorderQuote,
@@ -61,7 +63,6 @@ export function NewCalculationForm() {
   const dataSectionRef = useRef<HTMLElement | null>(null);
   const submitButtonRef = useRef<HTMLButtonElement | null>(null);
   const highlightTimeoutRef = useRef<number | null>(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const [needsManualRate, setNeedsManualRate] = useState(false);
   const [rateConfigs, setRateConfigs] = useState<StoredRateConfig[]>([]);
@@ -72,7 +73,8 @@ export function NewCalculationForm() {
   const [quantity, setQuantity] = useState("");
   const [unitPrice, setUnitPrice] = useState("");
   const [currency, setCurrency] = useState<CurrencyCode>("CNY");
-  const [isExtracting, setIsExtracting] = useState(false);
+  const [extractPhase, setExtractPhase] = useState<BusyOverlayPhase | null>(null);
+  const [submitPhase, setSubmitPhase] = useState<BusyOverlayPhase | null>(null);
   const [isAwaitingRecognitionConfirmation, setIsAwaitingRecognitionConfirmation] = useState(false);
   const [highlightedFields, setHighlightedFields] = useState<HighlightedField[]>([]);
   const [isSubmitButtonVisible, setIsSubmitButtonVisible] = useState(false);
@@ -210,7 +212,7 @@ export function NewCalculationForm() {
       return;
     }
 
-    setIsExtracting(true);
+    setExtractPhase("loading");
     setFormError(null);
 
     const payload = new FormData();
@@ -225,8 +227,13 @@ export function NewCalculationForm() {
 
       if (!response.ok) {
         setFormError(result.error ?? "Не удалось распознать файл.");
+        setExtractPhase(null);
         return;
       }
+
+      setExtractPhase("success");
+      await waitForPaint();
+      await sleep(500);
 
       const updatedFields: HighlightedField[] = [];
 
@@ -249,20 +256,22 @@ export function NewCalculationForm() {
       triggerFieldHighlight(updatedFields);
       setIsAwaitingRecognitionConfirmation(true);
       setFormError("Проверьте распознанные данные и нажмите «Подтвердить и рассчитать».");
+      setExtractPhase(null);
 
-      if (window.matchMedia("(max-width: 767px)").matches) {
+      if (window.matchMedia("(max-width: 1023px)").matches) {
         window.setTimeout(() => {
           dataSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
         }, 0);
       }
-    } finally {
-      setIsExtracting(false);
+    } catch {
+      setFormError("Не удалось распознать файл.");
+      setExtractPhase(null);
     }
   }
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setIsSubmitting(true);
+    setSubmitPhase("loading");
     setFormError(null);
 
     const formData = new FormData(event.currentTarget);
@@ -289,7 +298,7 @@ export function NewCalculationForm() {
         : [];
 
     if (!selectedRoute || !rateSettings) {
-      setIsSubmitting(false);
+      setSubmitPhase(null);
       setFormError("Не удалось загрузить ставки маршрутов.");
       return;
     }
@@ -300,7 +309,7 @@ export function NewCalculationForm() {
       submittedQuantity <= 0 ||
       !Number.isFinite(submittedUnitPrice)
     ) {
-      setIsSubmitting(false);
+      setSubmitPhase(null);
       setFormError("Заполните название товара, количество и цену.");
       return;
     }
@@ -309,7 +318,7 @@ export function NewCalculationForm() {
       !Number.isFinite(preBorderExpensesForeign) ||
       preBorderExpensesForeign < 0
     ) {
-      setIsSubmitting(false);
+      setSubmitPhase(null);
       setFormError("Проверьте ставки доставки и расходов по РФ.");
       return;
     }
@@ -327,13 +336,13 @@ export function NewCalculationForm() {
         exchangeRate = await fetchExchangeRate(submittedCurrency);
         exchangeRateSource = "cbr";
       } catch {
-        setIsSubmitting(false);
+        setSubmitPhase(null);
         setNeedsManualRate(true);
         setFormError("Не удалось получить курс ЦБ. Укажите курс вручную и повторите расчёт.");
         return;
       }
     } else if (!Number.isFinite(manualExchangeRate) || manualExchangeRate <= 0) {
-      setIsSubmitting(false);
+      setSubmitPhase(null);
       setFormError("Укажите ручной курс к рублю.");
       return;
     }
@@ -341,7 +350,7 @@ export function NewCalculationForm() {
     try {
       preBorderExchangeRate = await resolveExchangeRate("USD");
     } catch {
-      setIsSubmitting(false);
+      setSubmitPhase(null);
       setFormError("Не удалось получить курс USD для расходов до границы.");
       return;
     }
@@ -367,6 +376,9 @@ export function NewCalculationForm() {
       files: uploadedFiles
     });
 
+    setSubmitPhase("success");
+    await waitForPaint();
+    await sleep(500);
     router.push(`/calculations/${calculation.id}`);
   }
 
@@ -418,13 +430,86 @@ export function NewCalculationForm() {
         : selectedExchangeRate !== null
           ? formatExchangeRate(selectedExchangeRate)
           : "—";
+  const isExtracting = extractPhase !== null;
+  const isSubmitting = submitPhase !== null;
+  const showDelayedSubmitBusy = useDelayedBusy(submitPhase === "loading", 400);
+  const showSubmitOverlay =
+    submitPhase === "success" || (submitPhase === "loading" && showDelayedSubmitBusy);
+
+  function renderSubmitButtonLabel(short = false) {
+    if (submitPhase === "success") {
+      return (
+        <span className="inline-flex items-center justify-center gap-2">
+          <span aria-hidden>✓</span>
+          Готово
+        </span>
+      );
+    }
+
+    if (submitPhase === "loading" && showDelayedSubmitBusy) {
+      return (
+        <span className="inline-flex items-center justify-center gap-2">
+          <LoadingDots />
+          {short ? "Считаем" : "Считаем"}
+        </span>
+      );
+    }
+
+    if (isAwaitingRecognitionConfirmation) {
+      return "Подтвердить и рассчитать";
+    }
+
+    return short ? "Рассчитать" : "Создать расчёт";
+  }
 
   return (
     <form
       onSubmit={handleSubmit}
-      className="space-y-5 lg:grid lg:grid-cols-[minmax(0,1fr)_380px] lg:items-start lg:gap-5 lg:space-y-0"
+      aria-busy={isSubmitting || isExtracting}
+      className="relative space-y-5 lg:grid lg:grid-cols-[minmax(0,1fr)_380px] lg:items-start lg:gap-5 lg:space-y-0"
     >
-      <section ref={dataSectionRef} className="rounded-[2rem] border border-stone-200 bg-white p-5 shadow-sm">
+      {showSubmitOverlay && submitPhase ? (
+        <>
+          <BusyOverlay
+            variant="fullscreen"
+            className="lg:hidden"
+            phase={submitPhase === "success" ? "success" : "loading"}
+            loadingLabel="Считаем"
+            successLabel="Готово"
+          />
+          <BusyOverlay
+            variant="section"
+            className="!hidden !rounded-none lg:!flex"
+            phase={submitPhase === "success" ? "success" : "loading"}
+            loadingLabel="Считаем"
+            successLabel="Готово"
+          />
+        </>
+      ) : null}
+
+      {extractPhase ? (
+        <>
+          <BusyOverlay
+            variant="fullscreen"
+            className="lg:hidden"
+            phase={extractPhase}
+            loadingLabel="Идёт распознавание"
+            successLabel="Готово"
+          />
+          <BusyOverlay
+            variant="section"
+            className="!hidden !rounded-none lg:!flex"
+            phase={extractPhase}
+            loadingLabel="Идёт распознавание"
+            successLabel="Готово"
+          />
+        </>
+      ) : null}
+      <section
+        ref={dataSectionRef}
+        className="rounded-[2rem] border border-stone-200 bg-white p-5 shadow-sm"
+        aria-busy={isExtracting}
+      >
         <div>
           <label className="text-sm font-semibold text-stone-900" htmlFor="product_name">
             Название товара
@@ -688,17 +773,10 @@ export function NewCalculationForm() {
           <button
             type="button"
             onClick={handleExtractFromFile}
-            disabled={isExtracting}
+            disabled={isExtracting || isSubmitting}
             className="mt-4 w-full rounded-full border border-stone-200 bg-stone-50 px-5 py-3 text-sm font-semibold text-stone-700 disabled:cursor-not-allowed disabled:text-stone-400"
           >
-            {isExtracting ? (
-              <span className="inline-flex items-center justify-center gap-2">
-                <LoadingDots />
-                Распознаём файл
-              </span>
-            ) : (
-              "Распознать данные из файла"
-            )}
+            Распознать данные из файла
           </button>
         </section>
 
@@ -711,38 +789,22 @@ export function NewCalculationForm() {
         <button
           ref={submitButtonRef}
           type="submit"
-          disabled={isSubmitting}
+          disabled={isSubmitting || isExtracting}
           className="w-full rounded-full bg-stone-950 px-5 py-4 text-base font-semibold text-white shadow-sm disabled:cursor-not-allowed disabled:bg-stone-400"
         >
-          {isSubmitting ? (
-            <span className="inline-flex items-center justify-center gap-2">
-              <LoadingDots />
-              Создаём расчёт
-            </span>
-          ) : isAwaitingRecognitionConfirmation ? (
-            "Подтвердить и рассчитать"
-          ) : (
-            "Создать расчёт"
-          )}
+          {renderSubmitButtonLabel()}
         </button>
       </div>
       <button
         type="submit"
-        disabled={isSubmitting}
+        disabled={isSubmitting || isExtracting}
         className={`fixed bottom-20 right-5 z-30 rounded-full bg-stone-950 px-5 py-3 text-sm font-semibold text-white shadow-lg transition duration-200 disabled:cursor-not-allowed disabled:bg-stone-400 lg:hidden ${
           isSubmitButtonVisible
             ? "pointer-events-none translate-y-3 opacity-0"
             : "translate-y-0 opacity-100"
         }`}
       >
-        {isSubmitting ? (
-          <span className="inline-flex items-center gap-2">
-            <LoadingDots />
-            Считаем
-          </span>
-        ) : (
-          "Рассчитать"
-        )}
+        {renderSubmitButtonLabel(true)}
       </button>
     </form>
   );

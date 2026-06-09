@@ -1,5 +1,6 @@
 "use client";
 
+import { LoadingDots } from "@/components/LoadingDots";
 import { useOptionalRatesAdmin } from "./RatesAdminContext";
 
 export function RatesHeaderAdmin() {
@@ -11,6 +12,7 @@ export function RatesHeaderAdmin() {
 
   const { onSave, onReset, onExit } = context.actions;
   const hasUnsavedChanges = context.hasUnsavedChanges;
+  const isSaving = context.isSaving;
 
   return (
     <div
@@ -33,12 +35,23 @@ export function RatesHeaderAdmin() {
       <button
         type="button"
         onClick={onSave}
-        className={`h-8 rounded-full bg-stone-950 px-2.5 text-[11px] font-semibold text-white sm:px-3 sm:text-xs ${
-          hasUnsavedChanges ? "save-pulse" : ""
+        disabled={isSaving}
+        className={`h-8 rounded-full bg-stone-950 px-2.5 text-[11px] font-semibold text-white disabled:cursor-not-allowed disabled:bg-stone-400 sm:px-3 sm:text-xs ${
+          hasUnsavedChanges && !isSaving ? "save-pulse" : ""
         }`}
       >
-        <span className="sm:hidden">Сохр.</span>
-        <span className="hidden sm:inline">Сохранить</span>
+        {isSaving ? (
+          <span className="inline-flex items-center gap-1">
+            <LoadingDots />
+            <span className="sm:hidden">Сохр.</span>
+            <span className="hidden sm:inline">Сохраняем</span>
+          </span>
+        ) : (
+          <>
+            <span className="sm:hidden">Сохр.</span>
+            <span className="hidden sm:inline">Сохранить</span>
+          </>
+        )}
       </button>
       <button
         type="button"

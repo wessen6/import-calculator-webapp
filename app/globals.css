@@ -80,3 +80,23 @@ a {
 .save-pulse {
   animation: save-pulse 2s ease-in-out infinite;
 }
+
+@keyframes busy-overlay-success-pop {
+  0% {
+    opacity: 0;
+    transform: scale(0.88);
+  }
+
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.busy-overlay-success-card {
+  animation: busy-overlay-success-pop 220ms ease-out both;
+}
+
+.busy-overlay-success-icon {
+  animation: busy-overlay-success-pop 280ms ease-out both;
+}
