@@ -8,9 +8,10 @@ type FileUploadZoneProps = {
   label: string;
   description: string;
   name: CalculationFileKind;
+  onFileChange?: (file: File | null) => void;
 };
 
-export function FileUploadZone({ label, description, name }: FileUploadZoneProps) {
+export function FileUploadZone({ label, description, name, onFileChange }: FileUploadZoneProps) {
   const inputId = useId();
   const inputRef = useRef<HTMLInputElement | null>(null);
   const [fileName, setFileName] = useState<string | null>(null);
@@ -20,6 +21,7 @@ export function FileUploadZone({ label, description, name }: FileUploadZoneProps
   function setSelectedFile(file: File | null) {
     setFileName(file?.name ?? null);
     setFileSize(file?.size ?? null);
+    onFileChange?.(file);
   }
 
   function attachDroppedFile(file: File) {

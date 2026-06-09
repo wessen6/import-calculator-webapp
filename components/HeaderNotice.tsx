@@ -1,5 +1,6 @@
 "use client";
 
+import { btnPressEmeraldGhost } from "@/lib/button-interaction";
 import {
   createContext,
   useCallback,
@@ -105,7 +106,7 @@ export function HeaderNoticeChip() {
         type="button"
         onClick={() => context?.clearNotice()}
         aria-label="Закрыть уведомление"
-        className="shrink-0 rounded-full px-0.5 text-emerald-700 transition hover:bg-emerald-100"
+        className={`${btnPressEmeraldGhost} shrink-0 rounded-full px-0.5 text-emerald-700`}
       >
         ✕
       </button>

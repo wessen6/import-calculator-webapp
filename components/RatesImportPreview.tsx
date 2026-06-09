@@ -1,6 +1,7 @@
 "use client";
 
 import clsx from "clsx";
+import { btnPressPrimary, btnPressSecondary } from "@/lib/button-interaction";
 import type { RatesImportDiff } from "@/lib/rates-import-diff";
 
 type RatesImportPreviewProps = {
@@ -120,14 +121,14 @@ export function RatesImportPreview({
         <button
           type="button"
           onClick={onCancel}
-          className="rounded-full border border-stone-200 bg-white px-4 py-3 text-sm font-semibold text-stone-700"
+          className={`${btnPressSecondary} rounded-full border border-stone-200 bg-white px-4 py-3 text-sm font-semibold text-stone-700`}
         >
           Отмена
         </button>
         <button
           type="button"
           onClick={onApply}
-          className="rounded-full bg-stone-950 px-4 py-3 text-sm font-semibold text-white"
+          className={`${btnPressPrimary} rounded-full bg-stone-950 px-4 py-3 text-sm font-semibold text-white`}
         >
           Применить в форму
         </button>

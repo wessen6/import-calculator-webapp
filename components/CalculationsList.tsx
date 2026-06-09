@@ -10,6 +10,7 @@ import {
   importStoredCalculations,
   subscribeToStoredCalculations
 } from "@/lib/storage";
+import { btnPressPrimary, btnPressSecondary } from "@/lib/button-interaction";
 import type { Calculation } from "@/lib/types";
 
 function parseCalculations(value: string) {
@@ -87,14 +88,14 @@ export function CalculationsList({ fallbackCalculations }: { fallbackCalculation
           <button
             type="button"
             onClick={handleExport}
-            className="rounded-full border border-stone-200 bg-white px-4 py-3 text-sm font-semibold text-stone-700"
+            className={`${btnPressSecondary} rounded-full border border-stone-200 bg-white px-4 py-3 text-sm font-semibold text-stone-700`}
           >
             Экспорт JSON
           </button>
           <button
             type="button"
             onClick={() => importInputRef.current?.click()}
-            className="rounded-full bg-stone-950 px-4 py-3 text-sm font-semibold text-white"
+            className={`${btnPressPrimary} rounded-full bg-stone-950 px-4 py-3 text-sm font-semibold text-white`}
           >
             Импорт JSON
           </button>

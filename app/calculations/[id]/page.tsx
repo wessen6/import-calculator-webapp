@@ -20,7 +20,7 @@ export default async function CalculationDetailsPage({ params }: CalculationDeta
   const calculation = getFallbackCalculationById(id);
 
   return (
-    <AppShell title="Карточка расчёта" subtitle={id} backHref="/calculations">
+    <AppShell title="Карточка расчёта" subtitle={id}>
       <CalculationDetails id={id} fallbackCalculation={calculation} />
     </AppShell>
   );

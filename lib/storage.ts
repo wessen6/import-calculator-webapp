@@ -230,7 +230,7 @@ export function createStoredCalculation(input: CreateCalculationInput) {
     status: input.needsConfirmation ? "ready_for_confirmation" : "completed",
     message: input.needsConfirmation
       ? "Проверьте данные, распознанные из файла, перед запуском расчёта."
-      : "Расчёт выполнен по сохранённым ставкам.",
+      : undefined,
     ...calculatedCost,
     created_at: now,
     updated_at: now,

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { btnPressPrimary } from "@/lib/button-interaction";
 
 type EmptyStateProps = {
   title: string;
@@ -18,7 +19,7 @@ export function EmptyState({ title, description, actionHref, actionLabel }: Empt
       {actionHref && actionLabel ? (
         <Link
           href={actionHref}
-          className="mt-5 inline-flex rounded-full bg-stone-950 px-5 py-3 text-sm font-semibold !text-white hover:!text-white"
+          className={`${btnPressPrimary} mt-5 inline-flex rounded-full bg-stone-950 px-5 py-3 text-sm font-semibold !text-white`}
         >
           {actionLabel}
         </Link>

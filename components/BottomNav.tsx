@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { btnPressGhost } from "@/lib/button-interaction";
 
 const navItems = [
   { href: "/calculations", label: "История" },
@@ -14,7 +15,7 @@ export function BottomNav() {
           <Link
             key={item.href}
             href={item.href}
-            className="rounded-full px-3 py-2 text-center text-sm font-semibold text-stone-700 transition hover:bg-stone-100"
+            className={`${btnPressGhost} rounded-full px-3 py-2 text-center text-sm font-semibold text-stone-700`}
           >
             {item.label}
           </Link>

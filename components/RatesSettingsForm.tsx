@@ -22,6 +22,12 @@ import {
   type StoredRateSettings
 } from "@/lib/rates-payload";
 import { LoadingDots } from "@/components/LoadingDots";
+import {
+  btnPressAmber,
+  btnPressPrimary,
+  btnPressSecondary
+} from "@/lib/button-interaction";
+import { selectFieldClass } from "@/lib/form-field-classes";
 import { useHeaderNotice } from "@/components/HeaderNotice";
 import { RatesImportPreview } from "@/components/RatesImportPreview";
 import { useRatesAdmin } from "@/components/RatesAdminContext";
@@ -328,6 +334,7 @@ export function RatesSettingsForm() {
         }}
         className={clsx(
           "w-full rounded-b-2xl border border-t-0 px-3 py-3 text-sm outline-none transition lg:w-[7.5rem] lg:shrink-0 lg:rounded-b-2xl lg:rounded-l-none lg:rounded-r-2xl lg:border-l-0 lg:border-t",
+          selectFieldClass,
           getEditableFieldClass(fieldKey),
           readOnlyFieldClass
         )}
@@ -518,7 +525,7 @@ export function RatesSettingsForm() {
             type="button"
             disabled={!hasPasswordDraft || isLoggingIn}
             onClick={() => void handleOwnerLogin()}
-            className="h-8 shrink-0 rounded-full bg-stone-950 px-3 text-xs font-semibold text-white disabled:cursor-not-allowed disabled:bg-stone-400"
+            className={`${btnPressPrimary} h-8 shrink-0 rounded-full bg-stone-950 px-3 text-xs font-semibold text-white disabled:cursor-not-allowed disabled:bg-stone-400`}
           >
             {isLoggingIn ? (
               <span className="inline-flex items-center gap-1">
@@ -1091,7 +1098,7 @@ export function RatesSettingsForm() {
           <button
             type="button"
             onClick={handleExportRates}
-            className="rounded-full border border-stone-200 bg-white px-4 py-3 text-sm font-semibold text-stone-700"
+            className={`${btnPressSecondary} rounded-full border border-stone-200 bg-white px-4 py-3 text-sm font-semibold text-stone-700`}
           >
             Экспорт JSON
           </button>
@@ -1099,7 +1106,7 @@ export function RatesSettingsForm() {
             type="button"
             onClick={() => importInputRef.current?.click()}
             disabled={!isAdminMode}
-            className="rounded-full bg-stone-950 px-4 py-3 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:bg-stone-400"
+            className={`${btnPressPrimary} rounded-full bg-stone-950 px-4 py-3 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:bg-stone-400`}
           >
             Импорт JSON
           </button>
@@ -1134,7 +1141,7 @@ export function RatesSettingsForm() {
           <button
             type="button"
             onClick={handleRevertImport}
-            className="mt-3 w-full rounded-full border border-stone-200 bg-white px-4 py-3 text-sm font-semibold text-stone-700"
+            className={`${btnPressSecondary} mt-3 w-full rounded-full border border-stone-200 bg-white px-4 py-3 text-sm font-semibold text-stone-700`}
           >
             Вернуть как было (до импорта)
           </button>
@@ -1143,7 +1150,7 @@ export function RatesSettingsForm() {
           <button
             type="button"
             onClick={() => void handleRestoreFromBackup()}
-            className="mt-3 w-full rounded-full border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-900"
+            className={`${btnPressAmber} mt-3 w-full rounded-full border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-900`}
           >
             Восстановить из backup
           </button>
@@ -1220,6 +1227,7 @@ export function RatesSettingsForm() {
                 }}
                 className={clsx(
                   "mt-2 w-full rounded-2xl border px-4 py-3 text-base",
+                  selectFieldClass,
                   getEditableFieldClass("allocation_method"),
                   readOnlyFieldClass
                 )}
@@ -1357,7 +1365,7 @@ export function RatesSettingsForm() {
             type="button"
             disabled={!newRouteLabel.trim() || !newRouteCode.trim()}
             onClick={handleAddRoute}
-            className="mt-3 w-full rounded-full bg-stone-950 px-4 py-3 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:bg-stone-400 sm:w-auto"
+            className={`${btnPressPrimary} mt-3 w-full rounded-full bg-stone-950 px-4 py-3 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:bg-stone-400 sm:w-auto`}
           >
             + Маршрут
           </button>
@@ -1401,7 +1409,7 @@ export function RatesSettingsForm() {
                       [group.route_code]: event.target.value as TransportType
                     }));
                   }}
-                  className="mt-2 w-full rounded-2xl border border-stone-200 bg-stone-50 px-4 py-3 text-base outline-none transition focus:border-stone-400 focus:bg-white disabled:cursor-default disabled:bg-stone-50 disabled:text-stone-800"
+                  className={`mt-2 w-full rounded-2xl border border-stone-200 bg-stone-50 px-4 py-3 text-base outline-none transition focus:border-stone-400 focus:bg-white disabled:bg-stone-50 disabled:text-stone-800 ${selectFieldClass}`}
                 >
                   {group.configs.map((row) => {
                     const transport = TRANSPORT_TYPE_OPTIONS.find((t) => t.code === row.transport_type);

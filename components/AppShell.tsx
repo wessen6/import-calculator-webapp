@@ -6,7 +6,6 @@ import { MobileHeader } from "./MobileHeader";
 type AppShellProps = {
   title: string;
   subtitle?: string;
-  backHref?: string;
   headerAside?: ReactNode;
   action?: {
     href: string;
@@ -18,7 +17,6 @@ type AppShellProps = {
 export function AppShell({
   title,
   subtitle,
-  backHref,
   headerAside,
   action,
   children
@@ -29,7 +27,6 @@ export function AppShell({
         <MobileHeader
           title={title}
           subtitle={subtitle}
-          backHref={backHref}
           headerAside={headerAside}
           action={action}
         />

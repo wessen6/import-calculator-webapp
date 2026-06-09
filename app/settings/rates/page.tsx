@@ -9,7 +9,6 @@ export default function RatesSettingsPage() {
       <AppShell
         title="Ставки"
         subtitle="Маршруты и расходы"
-        backHref="/calculations"
         headerAside={<RatesHeaderAdmin />}
       >
         <RatesSettingsForm />

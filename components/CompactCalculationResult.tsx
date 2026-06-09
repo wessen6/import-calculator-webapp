@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { btnPressEmerald } from "@/lib/button-interaction";
 import {
   getCalculationSummaryColumns,
   getCalculationSummaryCopyText,
@@ -32,7 +33,7 @@ export function CompactCalculationResult({ calculation }: { calculation: Calcula
         <button
           type="button"
           onClick={handleCopy}
-          className="rounded-full bg-emerald-950 px-4 py-2 text-xs font-semibold text-white"
+          className={`${btnPressEmerald} rounded-full bg-emerald-950 px-4 py-2 text-xs font-semibold text-white`}
         >
           {copied ? "Скопировано" : "Копировать"}
         </button>

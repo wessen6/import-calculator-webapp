@@ -4,6 +4,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { BusyOverlay, type BusyOverlayPhase } from "@/components/BusyOverlay";
 import { LoadingDots } from "@/components/LoadingDots";
+import { btnPressPrimary, btnPressSecondary } from "@/lib/button-interaction";
+import { selectFieldClass } from "@/lib/form-field-classes";
 import { formatApiError } from "@/lib/format-api-error";
 import { formatDateTime, formatExchangeRate } from "@/lib/format";
 import { sleep, useDelayedBusy, waitForPaint } from "@/lib/use-delayed-busy";
@@ -79,6 +81,7 @@ export function NewCalculationForm() {
   const [isAwaitingRecognitionConfirmation, setIsAwaitingRecognitionConfirmation] = useState(false);
   const [highlightedFields, setHighlightedFields] = useState<HighlightedField[]>([]);
   const [isSubmitButtonVisible, setIsSubmitButtonVisible] = useState(false);
+  const [hasInvoiceFile, setHasInvoiceFile] = useState(false);
   const [usdExchangeRate, setUsdExchangeRate] = useState<number | null>(null);
   const [ratesStatus, setRatesStatus] = useState<"loading" | "ready" | "error">("loading");
   const [exchangeRate, setExchangeRate] = useState<{
@@ -423,6 +426,8 @@ export function NewCalculationForm() {
         ? "border-emerald-400 bg-emerald-50 shadow-[0_0_0_5px_rgba(16,185,129,0.14)]"
         : "border-stone-200 bg-stone-50 focus:border-stone-400 focus:bg-white"
     }`;
+  const getSelectFieldClassName = (field: HighlightedField) =>
+    `${getFieldClassName(field)} ${selectFieldClass}`;
   const readOnlyFieldClassName =
     "mt-2 w-full cursor-default rounded-2xl border border-dashed border-stone-300 bg-stone-100 px-4 py-3 text-base font-semibold text-stone-600 outline-none";
   const isRatesLoading = ratesStatus === "loading";
@@ -572,7 +577,7 @@ export function NewCalculationForm() {
                 setCurrency(event.target.value as CurrencyCode);
                 triggerFieldHighlight(["currency"]);
               }}
-              className={getFieldClassName("currency")}
+              className={getSelectFieldClassName("currency")}
             >
               {currencies.map((currency) => (
                 <option key={currency} value={currency}>
@@ -644,7 +649,7 @@ export function NewCalculationForm() {
                 triggerFieldHighlight(["transport"]);
               }
             }}
-            className={getFieldClassName("transport")}
+            className={getSelectFieldClassName("transport")}
           >
             {transportOptionsForRoute.map((config) => (
               <option key={config.transport_type} value={config.transport_type}>
@@ -678,7 +683,7 @@ export function NewCalculationForm() {
                 triggerFieldHighlight(["route"]);
               }
             }}
-            className={getFieldClassName("route")}
+            className={getSelectFieldClassName("route")}
           >
             {routeOptions.map((route) => (
               <option key={route.route_code} value={route.route_code}>
@@ -761,13 +766,18 @@ export function NewCalculationForm() {
               name="invoice"
               label="Proforma, Invoice, Счет, КП"
               description="PDF или изображение"
+              onFileChange={(file) => setHasInvoiceFile(file !== null && file.size > 0)}
             />
           </div>
           <button
             type="button"
             onClick={handleExtractFromFile}
-            disabled={isExtracting || isSubmitting}
-            className="mt-4 w-full rounded-full border border-stone-200 bg-stone-50 px-5 py-3 text-sm font-semibold text-stone-700 disabled:cursor-not-allowed disabled:text-stone-400"
+            disabled={!hasInvoiceFile || isExtracting || isSubmitting}
+            className={`mt-4 w-full rounded-full px-5 py-3 text-sm font-semibold shadow-sm disabled:cursor-not-allowed ${
+              hasInvoiceFile
+                ? `${btnPressPrimary} bg-stone-950 text-white disabled:bg-stone-400`
+                : `${btnPressSecondary} border border-stone-200 bg-stone-50 text-stone-400`
+            }`}
           >
             Распознать данные из файла
           </button>
@@ -783,7 +793,7 @@ export function NewCalculationForm() {
           ref={submitButtonRef}
           type="submit"
           disabled={isSubmitting || isExtracting}
-          className="w-full rounded-full bg-stone-950 px-5 py-4 text-base font-semibold text-white shadow-sm disabled:cursor-not-allowed disabled:bg-stone-400"
+          className={`${btnPressPrimary} w-full rounded-full bg-stone-950 px-5 py-4 text-base font-semibold text-white shadow-sm disabled:cursor-not-allowed disabled:bg-stone-400`}
         >
           {renderSubmitButtonLabel()}
         </button>
@@ -791,7 +801,7 @@ export function NewCalculationForm() {
       <button
         type="submit"
         disabled={isSubmitting || isExtracting}
-        className={`fixed bottom-20 right-5 z-30 rounded-full bg-stone-950 px-5 py-3 text-sm font-semibold text-white shadow-lg transition duration-200 disabled:cursor-not-allowed disabled:bg-stone-400 lg:hidden ${
+        className={`${btnPressPrimary} fixed bottom-20 right-5 z-30 rounded-full bg-stone-950 px-5 py-3 text-sm font-semibold text-white shadow-lg disabled:cursor-not-allowed disabled:bg-stone-400 lg:hidden ${
           isSubmitButtonVisible
             ? "pointer-events-none translate-y-3 opacity-0"
             : "translate-y-0 opacity-100"

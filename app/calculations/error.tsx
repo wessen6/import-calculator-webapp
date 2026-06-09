@@ -1,6 +1,7 @@
 "use client";
 
 import { AppShell } from "@/components/AppShell";
+import { btnPressRose } from "@/lib/button-interaction";
 
 export default function CalculationsError({ reset }: { reset: () => void }) {
   return (
@@ -11,7 +12,7 @@ export default function CalculationsError({ reset }: { reset: () => void }) {
         <button
           type="button"
           onClick={reset}
-          className="mt-5 rounded-full bg-rose-950 px-5 py-3 text-sm font-semibold text-white"
+          className={`${btnPressRose} mt-5 rounded-full bg-rose-950 px-5 py-3 text-sm font-semibold text-white`}
         >
           Повторить
         </button>

@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { btnPressPrimary } from "@/lib/button-interaction";
 import { useMemo, useSyncExternalStore } from "react";
 import { CompactCalculationResult } from "@/components/CompactCalculationResult";
 import { StatusBadge } from "@/components/StatusBadge";
@@ -48,7 +49,7 @@ export function CalculationDetails({
         </p>
         <Link
           href="/calculations"
-          className="mt-5 inline-flex rounded-full bg-stone-950 px-5 py-3 text-sm font-semibold text-white"
+          className={`${btnPressPrimary} mt-5 inline-flex rounded-full bg-stone-950 px-5 py-3 text-sm font-semibold text-white`}
         >
           Вернуться к истории
         </Link>
@@ -69,28 +70,7 @@ export function CalculationDetails({
           <StatusBadge status={calculation.status} />
         </div>
 
-        <p className="mt-4 rounded-2xl bg-stone-50 px-4 py-3 text-sm leading-6 text-stone-600">
-          {calculation.message ?? STATUS_DESCRIPTIONS[calculation.status]}
-        </p>
-      </section>
-
-      <section className="rounded-[2rem] border border-stone-200 bg-white p-5 shadow-sm">
-        <h2 className="text-base font-semibold text-stone-950">Данные партии</h2>
         <dl className="mt-4 grid grid-cols-2 gap-3 text-sm">
-          <div className="rounded-2xl bg-stone-50 p-3">
-            <dt className="text-stone-400">Количество</dt>
-            <dd className="mt-1 font-semibold text-stone-950">{calculation.quantity}</dd>
-          </div>
-          <div className="rounded-2xl bg-stone-50 p-3">
-            <dt className="text-stone-400">Цена за единицу</dt>
-            <dd className="mt-1 font-semibold text-stone-950">
-              {calculation.unit_price} {calculation.currency}
-            </dd>
-          </div>
-          <div className="rounded-2xl bg-stone-50 p-3">
-            <dt className="text-stone-400">Валюта</dt>
-            <dd className="mt-1 font-semibold text-stone-950">{calculation.currency}</dd>
-          </div>
           <div className="rounded-2xl bg-stone-50 p-3">
             <dt className="text-stone-400">Маршрут</dt>
             <dd className="mt-1 font-semibold text-stone-950">
@@ -106,6 +86,12 @@ export function CalculationDetails({
             </div>
           ) : null}
         </dl>
+
+        {calculation.status !== "completed" ? (
+          <p className="mt-4 rounded-2xl bg-stone-50 px-4 py-3 text-sm leading-6 text-stone-600">
+            {calculation.message ?? STATUS_DESCRIPTIONS[calculation.status]}
+          </p>
+        ) : null}
       </section>
 
       {calculation.status === "completed" ? (

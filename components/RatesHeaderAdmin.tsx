@@ -1,6 +1,7 @@
 "use client";
 
 import { LoadingDots } from "@/components/LoadingDots";
+import { btnPressPrimary, btnPressRoseGhost, btnPressSecondary } from "@/lib/button-interaction";
 import { useOptionalRatesAdmin } from "./RatesAdminContext";
 
 export function RatesHeaderAdmin() {
@@ -28,7 +29,7 @@ export function RatesHeaderAdmin() {
       <button
         type="button"
         onClick={onReset}
-        className="hidden h-8 rounded-full border border-stone-200 bg-white px-2.5 text-xs font-semibold text-stone-700 sm:inline-flex"
+        className={`${btnPressSecondary} hidden h-8 rounded-full border border-stone-200 bg-white px-2.5 text-xs font-semibold text-stone-700 sm:inline-flex`}
       >
         Сброс
       </button>
@@ -36,7 +37,7 @@ export function RatesHeaderAdmin() {
         type="button"
         onClick={onSave}
         disabled={isSaving}
-        className={`h-8 rounded-full bg-stone-950 px-2.5 text-[11px] font-semibold text-white disabled:cursor-not-allowed disabled:bg-stone-400 sm:px-3 sm:text-xs ${
+        className={`${btnPressPrimary} h-8 rounded-full bg-stone-950 px-2.5 text-[11px] font-semibold text-white disabled:cursor-not-allowed disabled:bg-stone-400 sm:px-3 sm:text-xs ${
           hasUnsavedChanges && !isSaving ? "save-pulse" : ""
         }`}
       >
@@ -57,7 +58,7 @@ export function RatesHeaderAdmin() {
         type="button"
         onClick={onExit}
         aria-label="Выйти из режима администратора"
-        className="flex h-8 w-8 items-center justify-center rounded-full text-rose-500 transition hover:bg-rose-50"
+        className={`${btnPressRoseGhost} flex h-8 w-8 items-center justify-center rounded-full text-rose-500`}
       >
         ✕
       </button>

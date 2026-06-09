@@ -9,6 +9,7 @@ import {
   getCalculationSummaryMeta,
   hasCalculationSummary
 } from "@/lib/calculation-summary";
+import { btnPressGhost, btnPressRoseGhost } from "@/lib/button-interaction";
 import { formatCardDate } from "@/lib/format";
 import { deleteStoredCalculation } from "@/lib/storage";
 import type { Calculation } from "@/lib/types";
@@ -114,7 +115,7 @@ export function CalculationCard({ calculation }: { calculation: Calculation }) {
               type="button"
               onClick={handleDelete}
               aria-label="Удалить расчёт"
-              className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-rose-500 transition hover:bg-rose-50"
+              className={`${btnPressRoseGhost} flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-rose-500`}
             >
               <CloseIcon />
             </button>
@@ -125,10 +126,10 @@ export function CalculationCard({ calculation }: { calculation: Calculation }) {
               onClick={handleCopySummary}
               aria-label={copied ? "Итог скопирован" : "Скопировать итог"}
               title={copied ? "Скопировано" : "Скопировать итог"}
-              className={`flex h-8 w-8 items-center justify-center rounded-full transition ${
+              className={`${btnPressGhost} flex h-8 w-8 items-center justify-center rounded-full ${
                 copied
                   ? "bg-emerald-50 text-emerald-700"
-                  : "text-stone-500 hover:bg-stone-100 hover:text-stone-800"
+                  : "text-stone-500"
               }`}
             >
               <CopyIcon />

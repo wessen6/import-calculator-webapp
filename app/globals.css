@@ -1,5 +1,15 @@
 @import "tailwindcss";
 
+@layer base {
+  select:not(:disabled) {
+    cursor: pointer;
+  }
+
+  select:disabled {
+    cursor: not-allowed;
+  }
+}
+
 :root {
   --background: #f7f3ed;
   --foreground: #1f2933;
@@ -28,6 +38,16 @@ input,
 select,
 textarea {
   font: inherit;
+}
+
+button:not(:disabled),
+a[href],
+label[for] {
+  cursor: pointer;
+}
+
+button:disabled {
+  cursor: not-allowed;
 }
 
 a {
@@ -99,4 +119,75 @@ a {
 
 .busy-overlay-success-icon {
   animation: busy-overlay-success-pop 280ms ease-out both;
+}
+
+.btn-press {
+  cursor: pointer;
+  transition:
+    transform 150ms ease,
+    background-color 150ms ease,
+    border-color 150ms ease,
+    box-shadow 150ms ease,
+    color 150ms ease;
+}
+
+.btn-press:disabled {
+  cursor: not-allowed;
+}
+
+.btn-press:active:not(:disabled) {
+  transform: scale(0.98);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .btn-press-primary:hover:not(:disabled) {
+    background-color: #1c1917;
+    box-shadow: 0 8px 22px -4px rgba(28, 25, 23, 0.38);
+    transform: translateY(-1px);
+  }
+
+  .btn-press-secondary:hover:not(:disabled) {
+    background-color: #f5f5f4;
+    border-color: #a8a29e;
+    box-shadow: 0 4px 14px -4px rgba(28, 25, 23, 0.14);
+    transform: translateY(-1px);
+  }
+
+  .btn-press-amber:hover:not(:disabled) {
+    background-color: #fde68a;
+    border-color: #fbbf24;
+    box-shadow: 0 4px 14px -4px rgba(180, 83, 9, 0.18);
+    transform: translateY(-1px);
+  }
+
+  .btn-press-emerald:hover:not(:disabled) {
+    background-color: #064e3b;
+    box-shadow: 0 8px 22px -4px rgba(2, 44, 34, 0.38);
+    transform: translateY(-1px);
+  }
+
+  .btn-press-rose:hover:not(:disabled) {
+    background-color: #be123c;
+    box-shadow: 0 8px 22px -4px rgba(159, 18, 57, 0.38);
+    transform: translateY(-1px);
+  }
+
+  .btn-press-ghost:hover:not(:disabled) {
+    background-color: #e7e5e4;
+    color: #1c1917;
+  }
+
+  .btn-press-rose-ghost:hover:not(:disabled) {
+    background-color: #ffe4e6;
+    color: #be123c;
+  }
+
+  .btn-press-emerald-ghost:hover:not(:disabled) {
+    background-color: #a7f3d0;
+    color: #047857;
+  }
+
+  .btn-press:hover:active:not(:disabled) {
+    transform: translateY(0) scale(0.98);
+  }
 }
