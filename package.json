@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "next build --webpack",
     "start": "next start",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
@@ -12,14 +12,17 @@
     "rates:compile": "tsx scripts/compile-rates.ts",
     "rates:validate": "tsx scripts/validate-rates.ts",
     "rates:apply": "tsx scripts/apply-rates-patch.ts",
-    "rates:smoke": "tsx scripts/smoke-rates.ts"
+    "rates:smoke": "tsx scripts/smoke-rates.ts",
+    "icons:pwa": "tsx scripts/generate-pwa-icons.ts"
   },
   "dependencies": {
+    "@serwist/next": "^9.5.11",
     "@supabase/supabase-js": "latest",
     "clsx": "latest",
     "next": "latest",
     "react": "latest",
-    "react-dom": "latest"
+    "react-dom": "latest",
+    "serwist": "^9.5.11"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "latest",
@@ -28,6 +31,7 @@
     "@types/react-dom": "latest",
     "eslint": "latest",
     "eslint-config-next": "latest",
+    "sharp": "^0.34.5",
     "tailwindcss": "latest",
     "tsx": "^4.22.4",
     "typescript": "latest"

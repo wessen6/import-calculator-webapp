@@ -10,6 +10,10 @@ yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 
+# PWA build artifact
+public/sw.js
+public/sw.js.map
+
 # TypeScript / OS
 tsconfig.tsbuildinfo
 .DS_Store

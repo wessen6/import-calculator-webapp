@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="ImCalc">
+  <rect width="512" height="512" fill="#f7f3ed"/>
+  <rect x="168" y="138" width="176" height="124" rx="18" fill="none" stroke="#064e3b" stroke-width="16"/>
+  <line x1="168" y1="194" x2="344" y2="194" stroke="#064e3b" stroke-width="12" stroke-linecap="round"/>
+  <rect x="206" y="214" width="44" height="36" rx="7" fill="#059669"/>
+  <rect x="262" y="214" width="44" height="36" rx="7" fill="#059669"/>
+  <text x="256" y="360" fill="#064e3b" font-family="Arial, sans-serif" font-size="88" font-weight="700" text-anchor="middle">&#1048;&#1050;</text>
+</svg>

@@ -6,6 +6,22 @@
 
 ---
 
+## 2026-06-09 (PWA / установка на экран)
+
+### Добавлено
+
+- PWA: `app/manifest.ts`, Serwist service worker (`app/sw.ts`, `public/sw.js` при build), офлайн-страница `/~offline`.
+- Иконки ImCalc (контейнер + «ИК»): `public/icons/`, генерация `npm run icons:pwa`.
+- Баннер установки `InstallPrompt`: Android Chrome (`beforeinstallprompt`), iOS Safari (инструкция), in-app браузеры (открыть в Safari/Chrome).
+- Трекинг показа: 5-й визит **или** 1-й завершённый расчёт; повтор каждые 3 расчёта; «Позже» / «Не напоминать».
+
+### Изменено
+
+- `app/layout.tsx`: метаданные ImCalc, `SerwistProviderWrapper`, apple-touch-icon.
+- `components/AppShell.tsx`: `InstallPrompt`, `PwaVisitTracker`.
+
+---
+
 ## 2026-06-09 (безопасность API)
 
 ### Добавлено

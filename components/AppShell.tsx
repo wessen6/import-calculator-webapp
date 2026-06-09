@@ -1,7 +1,9 @@
 import type { ReactNode } from "react";
 import { BottomNav } from "./BottomNav";
 import { HeaderNoticeProvider } from "./HeaderNotice";
+import { InstallPrompt } from "./InstallPrompt";
 import { MobileHeader } from "./MobileHeader";
+import { PwaVisitTracker } from "./PwaVisitTracker";
 
 type AppShellProps = {
   title: string;
@@ -34,6 +36,8 @@ export function AppShell({
           {children}
         </main>
         <BottomNav />
+        <PwaVisitTracker />
+        <InstallPrompt />
       </div>
     </HeaderNoticeProvider>
   );
