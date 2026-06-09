@@ -40,7 +40,7 @@ cp .env.example .env.local
 nano .env.local   # см. ниже
 chmod 600 .env.local
 npm ci
-NODE_OPTIONS=--max-old-space-size=2048 npm run build
+NODE_OPTIONS=--max-old-space-size=2048 npm run build   # в package.json: next build --webpack (Serwist/PWA)
 ```
 
 ### `.env.local`
@@ -198,7 +198,7 @@ update-imcalc.sh
 cd /var/www/imcalc/app
 git pull origin main
 npm ci
-NODE_OPTIONS=--max-old-space-size=2048 npm run build
+NODE_OPTIONS=--max-old-space-size=2048 npm run build   # в package.json: next build --webpack (Serwist/PWA)
 systemctl restart imcalc
 ```
 
@@ -210,6 +210,27 @@ chmod +x /usr/local/bin/update-imcalc.sh
 ```
 
 `APP_DATA_DIR` и `.env.local` при `git pull` **не меняются**.
+
+### PWA после деплоя
+
+`update-imcalc.sh` (актуальная версия из репозитория) проверяет:
+
+| URL | Ожидание |
+|-----|----------|
+| `/manifest.webmanifest` | HTTP 200 |
+| `/sw.js` | HTTP 200 |
+| `/icons/icon-192.png` | HTTP 200 |
+
+`public/sw.js` **не в git** — создаётся только при `npm run build`. Если PWA-проверка падает: убедиться, что сборка прошла без ошибок и в `/var/www/imcalc/app/public/sw.js` файл есть.
+
+Ручная проверка:
+
+```bash
+curl -s -o /dev/null -w "%{http_code}\n" https://imcalc.wessen.online/manifest.webmanifest
+curl -s -o /dev/null -w "%{http_code}\n" https://imcalc.wessen.online/sw.js
+```
+
+На телефоне: заголовок вкладки **«ImCalc — импортный калькулятор»** (не «Import Calculator»). Установка — через баннер или меню Chrome/Safari; старая «закладка» без иконки не равна PWA.
 
 ---
 

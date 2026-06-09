@@ -8,90 +8,51 @@
 Продолжи Next.js import-calculator-webapp.
 
 Git: https://github.com/wessen6/import-calculator-webapp
-Ветка: main (9bc014d). Handoff: SESSION_SUMMARY.md
-Prod: https://imcalc.wessen.online — эталон ставок (ручная правка), OCR инвойса работает
-Dev: синхронизирован export prod → import dev
+Ветка: main (35a2680). Handoff: SESSION_SUMMARY.md
+Prod: https://imcalc.wessen.online — PWA установка работает (Android Chrome, iOS Safari)
+Деплой: update-imcalc.sh на VPS после push
 
-Задача сессии: безопасность API по плану ниже. Не ломать расчёт и админку ставок.
-Не трогать n8n runtime. Не коммить без команды.
-
----
-
-## Контекст
-
-- GET /api/rates сейчас публичный (весь rates.json). PUT/restore — с x-owner-password.
-- POST /api/extract-file-data публичный; ключи OCR/OpenRouter в .env.local на prod — работают.
-- NewCalculationForm: useEffect fetch("/api/rates"). extract — fetch("/api/extract-file-data").
-- readRatesPayload() в lib/server-rates-store.ts — для server-side чтения.
-
-Перед кодом: короткий план (5–10 шагов), затем изменения.
-После: typecheck, lint, build; проверить /calculations/new и /settings/rates.
+Не ломать расчёт, админку ставок и PWA. Не трогать n8n runtime. Не коммить без команды.
 
 ---
 
-## План изменений (по порядку)
+## Контекст (2026-06-09)
 
-### Блок A — OCR (низкий риск)
+### PWA (Serwist)
+- manifest: app/manifest.ts → /manifest.webmanifest
+- SW: app/sw.ts → public/sw.js (только при npm run build --webpack)
+- Баннер: components/InstallPrompt.tsx + lib/pwa-tracking.ts
+- Показ: 5-й визит ИЛИ 1-й расчёт; повтор +3 расчёта; «Не напоминать» = localStorage навсегда
+- Кнопки Android: Не напоминать | Установить | Позже (одна строка)
+- iOS: Не напоминать | Позже (по центру)
+- Dev: SW отключён; полная проверка PWA — npm run build && npm run start
 
-A1. BACKLOG.md: OCR keys на prod → [x]; DEPLOY.md — проверка с файлом.
-A2. app/api/extract-file-data/route.ts:
-    - http-referer для OpenRouter из env (OPENROUTER_HTTP_REFERER или APP_URL), не localhost.
-    - .env.example + строка в DEPLOY.md.
-A3. Защита от abuse на POST /api/extract-file-data:
-    - middleware.ts rate limit (например 10 req/min на IP) только для этого path;
-    - или max file size (~10 MB) → 413.
-    - Не требовать OWNER_ADMIN_PASSWORD для пользователей калькулятора.
-A4. Smoke: загрузка тестового PDF/картинки в /calculations/new.
+### UI
+- Таблица «Итог»: components/CalculationSummaryGrid.tsx — 6 колонок в ряд, clamp-шрифт
 
-### Блок B — закрыть публичный GET /api/rates
+### API (ранее)
+- GET /api/rates — только с x-owner-password
+- Ставки в RSC: readRatesPayload() на /calculations/new и /settings/rates
+- OCR: rate limit middleware, referer OpenRouter
 
-B0. Решение: вариант B (код) — RSC + закрыть GET. Traefik Basic Auth не делать, если не скажу.
-
-B1. app/calculations/new/page.tsx:
-    - async server component: initialRates = await readRatesPayload()
-    - передать в <NewCalculationForm initialRates={...} />
-
-B2. components/NewCalculationForm.tsx:
-    - prop initialRates; инициализация state из него
-    - убрать client fetch("/api/rates") когда initialRates передан
-
-B3. app/settings/rates/page.tsx + RatesSettingsForm.tsx:
-    - initialRates с сервера
-    - после Save/Restore — state из ответа API (уже есть)
-    - handleReset → router.refresh() вместо публичного GET (или GET с x-owner-password)
-
-B4. app/api/rates/route.ts:
-    - GET: 401 без x-owner-password (как PUT), ИЛИ удалить GET если все чтения server-side
-    - PUT без изменений
-
-B5. Обновить deploy/DEPLOY.md smoke (не ожидать 200 на анонимный curl /api/rates).
-B6. Проверить: scripts/apply-rates-patch.ts и smoke-rates.ts читают .app-data напрямую — не сломаны.
-
-### Блок C — после A+B (если останется время)
-
-C1. BACKLOG: rates:smoke под prod-эталон из STAGE7_CHECKLIST.md — отдельный коммит по команде.
+Перед нетривиальными задачами: короткий план (5–10 шагов).
+После изменений: npm run typecheck, lint, build.
+При заметных правках: PROJECT.md, CHANGELOG.md.
 
 ---
 
-## Не делать в этой задаче
+## Открытые темы (не обязательны)
 
-- Турция/Shanghai КП
-- Supabase / полноценный login
-- Менять логику расчёта и merge patch
-- n8n runtime
+- Повтор баннера установки после удаления PWA с экрана (сейчас флаги в localStorage сохраняются)
+- Push-уведомления (отложено)
+- rates:smoke под prod-эталон
 
 ---
 
-## Файлы (ожидаемые)
+## Файлы-ориентиры
 
-- app/api/extract-file-data/route.ts
-- middleware.ts (если rate limit)
-- app/calculations/new/page.tsx
-- components/NewCalculationForm.tsx
-- app/settings/rates/page.tsx
-- components/RatesSettingsForm.tsx
-- app/api/rates/route.ts
-- lib/owner-auth.ts (опционально — вынести isOwnerAuthorized)
-- .env.example, deploy/DEPLOY.md, BACKLOG.md
-- CHANGELOG.md при заметных изменениях
+- PWA: app/manifest.ts, app/sw.ts, components/InstallPrompt.tsx, lib/pwa-*.ts
+- Деплой: deploy/update-imcalc.sh, deploy/DEPLOY.md
+- Итог: components/CalculationSummaryGrid.tsx, components/CompactCalculationResult.tsx
+- Доки: PROJECT.md, CHANGELOG.md, SESSION_SUMMARY.md
 ```

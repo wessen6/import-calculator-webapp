@@ -1,71 +1,98 @@
 # SESSION_SUMMARY.md
 
-Handoff: 2026-06-08 (конец сессии). Новая вкладка → `RESUME_PROMPT.md`.
+Handoff: **2026-06-09** (PWA + mobile UI). Новая вкладка → `RESUME_PROMPT.md`.
 
 ## 1. Что уже сделано
 
-### Этап 7 / prod
-- **10 маршрутов** с котировкой 40HC на prod; ЕКБ/Казань — карточки без котировки; `qingdao-omsk` добавлен.
-- **Эталон:** prod `rates.json` (ручная правка UI), не `compiled/*.patch.json`.
-- **Dev sync:** export prod → import dev — совпадает.
-- **Деплой:** merge-fix `4b33900`, docs `43fc14c` + `9bc014d` на `origin/main`.
-- **Cron бэкапа** на VPS ✅ (`/var/backups/imcalc/`).
-- **OCR/OpenRouter** на prod — распознавание инвойса **работает** (ключи в `.env.local`).
+### PWA / установка на экран (prod ✅)
+- **Serwist:** `app/sw.ts` → `public/sw.js` при `npm run build` (скрипт: `next build --webpack`).
+- **Manifest:** `app/manifest.ts` — ImCalc, `start_url: /calculations?source=pwa`, `display: standalone`.
+- **Иконки:** `public/icons/` (контейнер + «ИК»), генерация `npm run icons:pwa`.
+- **Офлайн:** `/~offline` — оболочка + «Нет подключения к интернету»; API только сеть.
+- **Баннер** `components/InstallPrompt.tsx`:
+  - Android Chrome — `beforeinstallprompt` + кнопка «Установить»;
+  - iOS Safari — инструкция «Поделиться → На экран Домой»;
+  - in-app браузеры — «Откройте в Safari/Chrome»;
+  - порядок кнопок: **Не напоминать | Установить | Позже** (Android, одна строка);
+  - iOS/in-app: **Не напоминать | Позже**, по центру.
+- **Трекинг** `lib/pwa-tracking.ts`: 5-й визит **или** 1-й сохранённый расчёт; повтор каждые +3 расчёта; «Не напоминать» навсегда (до очистки данных сайта).
+- **Деплой:** `update-imcalc.sh` проверяет HTTP 200 для `manifest.webmanifest`, `sw.js`, `icons/icon-192.png`.
 
-### Код (ранее в main)
-- merge-fix patch (без seed 26500), Perplexity 30/70, comma fix, CLI `rates:apply`/`rates:smoke`.
-- `deploy/DEPLOY.md` — откат ставок, чтение cron-лога (`sudo tail`).
+### UI — таблица «Итог»
+- `components/CalculationSummaryGrid.tsx`: **6 колонок в одну строку**; шрифт `clamp()` по ширине экрана; `tabular-nums`; узкий неразрывный пробел в числах; `overflow-x-auto` как запасной вариант.
 
-### Эта сессия (планы, код не меняли)
-- План **OCR hardening** (referer, rate limit, backlog).
-- План **закрытия публичного GET `/api/rates`** (RSC + auth).
-- Очередь: `rates:smoke` под prod-эталон, Турция, Shanghai.
+### Ранее в main (до PWA)
+- Безопасность API: закрыт публичный GET `/api/rates`, rate limit OCR, server-side ставки в RSC.
+- Prod: https://imcalc.wessen.online — PWA задеплоена и проверена на Android (Zenfone 10) и iOS Safari.
 
-## 2. Файлы (сессия)
+## 2. Файлы (сессия PWA + UI)
 
-| Область | Пути | Git |
-|---------|------|-----|
-| Доки handoff | `SESSION_SUMMARY.md`, `RESUME_PROMPT.md` | ⬜ uncommitted |
-| Ранее pushed | `STAGE7_CHECKLIST.md`, `BACKLOG.md`, `DEPLOY.md` | ✅ `9bc014d` |
+| Область | Пути |
+|---------|------|
+| PWA core | `app/manifest.ts`, `app/sw.ts`, `app/~offline/page.tsx`, `next.config.ts`, `components/SerwistProviderWrapper.tsx` |
+| Install UX | `components/InstallPrompt.tsx`, `components/PwaVisitTracker.tsx`, `lib/pwa-install.ts`, `lib/pwa-tracking.ts` |
+| Иконки | `public/icons/*`, `scripts/generate-pwa-icons.ts` |
+| Итог таблица | `components/CalculationSummaryGrid.tsx` |
+| Деплой | `deploy/update-imcalc.sh` |
+| Доки | `PROJECT.md`, `CHANGELOG.md`, `deploy/DEPLOY.md`, `SESSION_SUMMARY.md`, `RESUME_PROMPT.md` |
+
+**Git (main):** `35a2680` (итог таблица), `de9e9dc` (кнопки баннера), `338ae22` (Android PWA fix), `0dff3cc` (PWA feat).
 
 ## 3. Решения
 
 | Тема | Правило |
 |------|---------|
-| Эталон ставок | Prod после ручной правки; обновления — на prod в UI |
-| OCR на prod | Задача «ключи» закрыта; дальше — hardening (referer, anti-abuse) |
-| GET `/api/rates` | Сейчас публичный; закрывать через RSC + убрать/защитить GET, не ломая расчёт |
-| Альтернатива auth | Traefik Basic Auth на весь `imcalc` — без кода, если сайт только для своих |
-| n8n | reference-only, runtime не трогать |
+| Сборка | `npm run build` = `next build --webpack` (Serwist не работает с Turbopack по умолчанию) |
+| Dev SW | Service worker **отключён** в development (`SerwistProviderWrapper`) |
+| `public/sw.js` | Генерируется при build, в `.gitignore`; на VPS появляется после `npm run build` |
+| Баннер после удаления PWA | Флаги в `localStorage` **не сбрасываются** при удалении иконки с экрана — это ожидаемо |
+| Повтор баннера | После «Позже» — через +3 расчёта; после «Не напоминать» — только очистка данных сайта |
+| Standalone | В установленном приложении баннер не показывается |
+| Таблица итогов | Одна строка 6 колонок; масштабирование шрифта, не перенос на 2 ряда |
+| Push-уведомления | Не реализованы; заложена только PWA-оболочка |
 
 ## 4. Что осталось (по приоритету)
 
-### Сессия 2 — безопасность API (см. RESUME_PROMPT)
-1. OCR: referer fix + rate limit на `/api/extract-file-data`
-2. Rates: server-side `readRatesPayload` в страницах → закрыть публичный GET
-3. Доки: BACKLOG OCR ✅, DEPLOY smoke без публичного curl rates
-
-### Позже
-- `rates:smoke` под prod-эталон (`STAGE7_CHECKLIST.md`)
-- КП: `turkey-spb-msk-40hc`, `shanghai-msk-oreh-zuevo`
-- P3: ТН ВЭД, Supabase, полноценный auth
+1. На VPS: скопировать свежий `deploy/update-imcalc.sh` в `/usr/local/bin/` (если ещё старая версия без PWA-проверки).
+2. iOS: полная проверка установки после следующих UI-правок (базово работает).
+3. Опционально: сброс флагов баннера при удалении PWA с экрана (если понадобится продуктово).
+4. Позже: push-уведомления, `rates:smoke` под prod-эталон, Supabase.
 
 ## 5. Блокеры / риски
 
-- **Не закрывать GET** до переноса загрузки ставок в RSC — иначе пустой «Новый расчёт».
-- **Не вешать OWNER_ADMIN_PASSWORD** на OCR для всех пользователей калькулятора.
-- `scripts/smoke-rates.ts` — старые patch-цифры; prod не проверяет.
+- **Старая закладка** на главном экране (без manifest) ≠ PWA — удалить и установить заново через Chrome/Safari.
+- **In-app браузеры** (Telegram и т.д.) — установка недоступна.
+- **Очень длинные числа** в итогах — возможен горизонтальный скролл таблицы (редко).
+- `next-env.d.ts` — автогенерация Next.js; не править вручную.
 
 ## 6. Следующий лучший шаг
 
-Новая вкладка: **фаза 1 OCR** (referer + backlog) → **фазы 1–3 rates** (RSC + закрыть GET) по `RESUME_PROMPT.md`.
+По продуктовому приоритету пользователя: **новые фичи расчёта / ставок** или **доработка PWA** (например, повтор баннера после удаления приложения). Перед кодом — `RESUME_PROMPT.md`.
 
 ## 7. Проверка после изменений
 
 ```bash
 npm run typecheck && npm run lint && npm run build
-# /calculations/new — маршруты и расчёт МСК
-# /settings/rates — загрузка, save, restore (с паролем)
-# POST /api/extract-file-data — инвойс на prod/dev
-curl -s -o /dev/null -w "%{http_code}\n" https://imcalc.wessen.online/api/rates   # после фикса → 401 или 404
 ```
+
+**Локально (UI):**
+```bash
+npm run dev -- --webpack -p 3000
+# http://localhost:3000/calculations
+```
+
+**Локально (полная PWA):**
+```bash
+npm run build && npm run start
+# manifest/sw только в production-сборке
+```
+
+**Prod smoke:**
+```bash
+curl -s -o /dev/null -w "%{http_code}\n" https://imcalc.wessen.online/manifest.webmanifest
+curl -s -o /dev/null -w "%{http_code}\n" https://imcalc.wessen.online/sw.js
+curl -s -o /dev/null -w "%{http_code}\n" https://imcalc.wessen.online/icons/icon-192.png
+# или: update-imcalc.sh
+```
+
+**Мобильно:** Chrome Android — баннер после 1-го расчёта; Safari iOS — инструкция; установка → иконка ИК, без URL-бара.
