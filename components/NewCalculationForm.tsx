@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { BusyOverlay, type BusyOverlayPhase } from "@/components/BusyOverlay";
 import { LoadingDots } from "@/components/LoadingDots";
+import { formatApiError } from "@/lib/format-api-error";
 import { formatDateTime, formatExchangeRate } from "@/lib/format";
 import { sleep, useDelayedBusy, waitForPaint } from "@/lib/use-delayed-busy";
 import { getEffectiveConfigUpdatedAt } from "@/lib/rates-display";
@@ -223,10 +224,18 @@ export function NewCalculationForm() {
         method: "POST",
         body: payload
       });
-      const result = (await response.json()) as ExtractFileDataResponse;
+
+      let result: ExtractFileDataResponse;
+      try {
+        result = (await response.json()) as ExtractFileDataResponse;
+      } catch {
+        setFormError("Сервер вернул неожиданный ответ.");
+        setExtractPhase(null);
+        return;
+      }
 
       if (!response.ok) {
-        setFormError(result.error ?? "Не удалось распознать файл.");
+        setFormError(formatApiError(result.error ?? "Не удалось распознать файл."));
         setExtractPhase(null);
         return;
       }
@@ -435,6 +444,20 @@ export function NewCalculationForm() {
   const showDelayedSubmitBusy = useDelayedBusy(submitPhase === "loading", 400);
   const showSubmitOverlay =
     submitPhase === "success" || (submitPhase === "loading" && showDelayedSubmitBusy);
+  const activeOverlay =
+    showSubmitOverlay && submitPhase
+      ? {
+          phase: (submitPhase === "success" ? "success" : "loading") as BusyOverlayPhase,
+          loadingLabel: "Считаем",
+          successLabel: "Готово"
+        }
+      : extractPhase
+        ? {
+            phase: extractPhase,
+            loadingLabel: "Идёт распознавание",
+            successLabel: "Готово"
+          }
+        : null;
 
   function renderSubmitButtonLabel(short = false) {
     if (submitPhase === "success") {
@@ -466,44 +489,14 @@ export function NewCalculationForm() {
     <form
       onSubmit={handleSubmit}
       aria-busy={isSubmitting || isExtracting}
-      className="relative space-y-5 lg:grid lg:grid-cols-[minmax(0,1fr)_380px] lg:items-start lg:gap-5 lg:space-y-0"
+      className="space-y-5 lg:grid lg:grid-cols-[minmax(0,1fr)_380px] lg:items-start lg:gap-5 lg:space-y-0"
     >
-      {showSubmitOverlay && submitPhase ? (
-        <>
-          <BusyOverlay
-            variant="fullscreen"
-            className="lg:hidden"
-            phase={submitPhase === "success" ? "success" : "loading"}
-            loadingLabel="Считаем"
-            successLabel="Готово"
-          />
-          <BusyOverlay
-            variant="section"
-            className="!hidden !rounded-none lg:!flex"
-            phase={submitPhase === "success" ? "success" : "loading"}
-            loadingLabel="Считаем"
-            successLabel="Готово"
-          />
-        </>
-      ) : null}
-
-      {extractPhase ? (
-        <>
-          <BusyOverlay
-            variant="fullscreen"
-            className="lg:hidden"
-            phase={extractPhase}
-            loadingLabel="Идёт распознавание"
-            successLabel="Готово"
-          />
-          <BusyOverlay
-            variant="section"
-            className="!hidden !rounded-none lg:!flex"
-            phase={extractPhase}
-            loadingLabel="Идёт распознавание"
-            successLabel="Готово"
-          />
-        </>
+      {activeOverlay ? (
+        <BusyOverlay
+          phase={activeOverlay.phase}
+          loadingLabel={activeOverlay.loadingLabel}
+          successLabel={activeOverlay.successLabel}
+        />
       ) : null}
       <section
         ref={dataSectionRef}

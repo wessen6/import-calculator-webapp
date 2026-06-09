@@ -1,4 +1,8 @@
+"use client";
+
 import clsx from "clsx";
+import { useSyncExternalStore } from "react";
+import { createPortal } from "react-dom";
 import { LoadingDots } from "@/components/LoadingDots";
 
 export type BusyOverlayPhase = "loading" | "success";
@@ -7,29 +11,31 @@ type BusyOverlayProps = {
   phase: BusyOverlayPhase;
   loadingLabel: string;
   successLabel: string;
-  variant?: "section" | "fullscreen";
-  className?: string;
 };
 
-export function BusyOverlay({
-  phase,
-  loadingLabel,
-  successLabel,
-  variant = "section",
-  className
-}: BusyOverlayProps) {
+function subscribeNoop() {
+  return () => {};
+}
+
+function getClientSnapshot() {
+  return true;
+}
+
+function getServerSnapshot() {
+  return false;
+}
+
+export function BusyOverlay({ phase, loadingLabel, successLabel }: BusyOverlayProps) {
+  const mounted = useSyncExternalStore(subscribeNoop, getClientSnapshot, getServerSnapshot);
   const label = phase === "loading" ? loadingLabel : successLabel;
 
-  return (
+  if (!mounted) {
+    return null;
+  }
+
+  return createPortal(
     <div
-      className={clsx(
-        "pointer-events-auto z-50 flex items-center justify-center",
-        variant === "section" &&
-          "absolute inset-0 rounded-[2rem] bg-white/92 shadow-[inset_0_0_0_1px_rgba(28,25,23,0.06)] backdrop-blur-sm",
-        variant === "fullscreen" &&
-          "fixed inset-x-0 top-16 bottom-20 bg-stone-900/20 backdrop-blur-[2px]",
-        className
-      )}
+      className="fixed inset-0 z-[100] flex items-center justify-center bg-stone-900/25 backdrop-blur-[2px]"
       role="status"
       aria-live="polite"
       aria-busy={phase === "loading"}
@@ -60,6 +66,7 @@ export function BusyOverlay({
           {label}
         </p>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

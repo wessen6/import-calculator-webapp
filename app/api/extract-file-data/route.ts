@@ -1,3 +1,4 @@
+import { formatExternalServiceError } from "@/lib/format-api-error";
 import { NextResponse } from "next/server";
 
 const OCR_SPACE_URL = "https://api.ocr.space/parse/image";
@@ -135,17 +136,28 @@ function normalizeExtractedData(data: ExtractedCalculationData, fallback: Extrac
 }
 
 async function extractTextWithOcrSpace(file: File, apiKey: string) {
+  const fileBytes = await file.arrayBuffer();
   const ocrForm = new FormData();
   ocrForm.set("apikey", apiKey);
   ocrForm.set("language", "eng");
   ocrForm.set("isOverlayRequired", "false");
   ocrForm.set("OCREngine", "2");
-  ocrForm.set("file", file, file.name);
+  ocrForm.set(
+    "file",
+    new Blob([fileBytes], { type: file.type || "application/octet-stream" }),
+    file.name
+  );
 
-  const response = await fetch(OCR_SPACE_URL, {
-    method: "POST",
-    body: ocrForm
-  });
+  let response: Response;
+
+  try {
+    response = await fetch(OCR_SPACE_URL, {
+      method: "POST",
+      body: ocrForm
+    });
+  } catch (error) {
+    throw new Error(formatExternalServiceError(error, "ocr"));
+  }
 
   if (!response.ok) {
     throw new Error("OCR сервис не ответил.");
@@ -170,35 +182,41 @@ async function extractTextWithOcrSpace(file: File, apiKey: string) {
 }
 
 async function parseInvoiceTextWithOpenRouter(text: string, apiKey: string) {
-  const response = await fetch(OPENROUTER_CHAT_URL, {
-    method: "POST",
-    headers: {
-      authorization: `Bearer ${apiKey}`,
-      "content-type": "application/json",
-      "http-referer": "http://localhost:3000",
-      "x-title": "Import Calculator Web App"
-    },
-    body: JSON.stringify({
-      model: process.env.OPENROUTER_MODEL ?? "openai/gpt-4o-mini",
-      messages: [
-        {
-          role: "system",
-          content:
-            "Ты извлекаешь данные из invoice/packing list для расчёта импорта. Верни только валидный JSON без markdown."
-        },
-        {
-          role: "user",
-          content:
-            'Из текста ниже извлеки JSON вида {"product_name": string, "quantity": number, "unit_price": number, "currency": "CNY"|"USD"|"EUR"|"RUB"}. ' +
-            "Если в invoice несколько товарных строк, возьми первую основную товарную позицию. " +
-            "quantity — количество штук/PCS, unit_price — цена за единицу, product_name — название товара, currency — валюта цены ($ означает USD). " +
-            "Если значение не найдено, не включай поле. Текст:\n\n" +
-            text
-        }
-      ],
-      temperature: 0
-    })
-  });
+  let response: Response;
+
+  try {
+    response = await fetch(OPENROUTER_CHAT_URL, {
+      method: "POST",
+      headers: {
+        authorization: `Bearer ${apiKey}`,
+        "content-type": "application/json",
+        "http-referer": "http://localhost:3000",
+        "x-title": "Import Calculator Web App"
+      },
+      body: JSON.stringify({
+        model: process.env.OPENROUTER_MODEL ?? "openai/gpt-4o-mini",
+        messages: [
+          {
+            role: "system",
+            content:
+              "Ты извлекаешь данные из invoice/packing list для расчёта импорта. Верни только валидный JSON без markdown."
+          },
+          {
+            role: "user",
+            content:
+              'Из текста ниже извлеки JSON вида {"product_name": string, "quantity": number, "unit_price": number, "currency": "CNY"|"USD"|"EUR"|"RUB"}. ' +
+              "Если в invoice несколько товарных строк, возьми первую основную товарную позицию. " +
+              "quantity — количество штук/PCS, unit_price — цена за единицу, product_name — название товара, currency — валюта цены ($ означает USD). " +
+              "Если значение не найдено, не включай поле. Текст:\n\n" +
+              text
+          }
+        ],
+        temperature: 0
+      })
+    });
+  } catch (error) {
+    throw new Error(formatExternalServiceError(error, "llm"));
+  }
 
   if (!response.ok) {
     throw new Error("OpenRouter не смог разобрать OCR-текст.");
