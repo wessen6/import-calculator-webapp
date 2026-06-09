@@ -146,13 +146,29 @@ export function InstallPrompt() {
           </p>
         ) : null}
 
-        <div className="mt-4 flex flex-wrap gap-2">
+        <div
+          className={
+            mode === "ios" || mode === "in-app"
+              ? "mt-4 flex items-center justify-center gap-2"
+              : mode === "android" && installEvent
+                ? "mt-4 grid grid-cols-3 gap-1.5"
+                : "mt-4 grid grid-cols-2 gap-2"
+          }
+        >
+          <button
+            type="button"
+            onClick={handleNever}
+            className={`${btnPressEmeraldGhost} min-w-0 rounded-full px-2 py-2 text-center text-[11px] font-semibold leading-tight text-emerald-800 sm:px-3 sm:text-xs`}
+          >
+            Не напоминать
+          </button>
+
           {mode === "android" && installEvent ? (
             <button
               type="button"
               onClick={handleInstall}
               disabled={installing}
-              className={`${btnPressEmerald} rounded-full bg-emerald-950 px-4 py-2 text-sm font-semibold text-white disabled:opacity-60`}
+              className={`${btnPressEmerald} min-w-0 rounded-full bg-emerald-950 px-2 py-2 text-center text-[11px] font-semibold leading-tight text-white disabled:opacity-60 sm:px-3 sm:text-xs`}
             >
               {installing ? "Установка..." : "Установить"}
             </button>
@@ -161,17 +177,9 @@ export function InstallPrompt() {
           <button
             type="button"
             onClick={handleLater}
-            className={`${btnPressGhost} rounded-full border border-stone-200 px-4 py-2 text-sm font-semibold text-stone-700`}
+            className={`${btnPressGhost} min-w-0 rounded-full border border-stone-200 px-2 py-2 text-center text-[11px] font-semibold leading-tight text-stone-700 sm:px-3 sm:text-xs`}
           >
             Позже
-          </button>
-
-          <button
-            type="button"
-            onClick={handleNever}
-            className={`${btnPressEmeraldGhost} rounded-full px-3 py-2 text-sm font-semibold text-emerald-800`}
-          >
-            Не напоминать
           </button>
         </div>
       </div>
