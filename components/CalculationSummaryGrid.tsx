@@ -7,25 +7,35 @@ type CalculationSummaryGridProps = {
   card?: boolean;
 };
 
+function formatCellValue(value: string) {
+  return value.replace(/ /g, "\u202F");
+}
+
 export function CalculationSummaryGrid({
   columns,
   compact = false,
   card = false
 }: CalculationSummaryGridProps) {
   const labelClassName = compact
-    ? "p-1.5 text-[10px] font-semibold leading-tight text-stone-500"
-    : "p-2 text-xs font-semibold text-emerald-950";
+    ? "min-w-0 p-1 text-[length:clamp(0.4375rem,1.9vw,0.625rem)] font-semibold leading-[1.15] text-stone-500"
+    : "min-w-0 px-0.5 py-1.5 text-[length:clamp(0.4375rem,1.9vw,0.75rem)] font-semibold leading-[1.15] text-emerald-950 sm:px-1 sm:py-2";
   const valueClassName = compact
-    ? "p-1.5 text-[11px] font-semibold leading-tight text-stone-950"
-    : "p-2 text-sm font-semibold text-stone-950";
+    ? "min-w-0 p-1 text-[length:clamp(0.5rem,2.2vw,0.6875rem)] font-semibold tabular-nums leading-none whitespace-nowrap text-stone-950"
+    : "min-w-0 px-0.5 py-1.5 text-[length:clamp(0.5rem,2.2vw,0.8125rem)] font-semibold tabular-nums leading-none whitespace-nowrap text-stone-950 sm:px-1 sm:py-2";
   const gridClassName = card
-    ? "grid min-w-0 grid-cols-4 gap-px"
+    ? "grid w-full min-w-0 grid-cols-4 gap-px"
     : compact
-      ? "grid min-w-0 grid-cols-4 gap-px sm:grid-cols-5 md:grid-cols-6"
-      : "grid grid-cols-6";
+      ? "grid w-full min-w-0 grid-cols-4 gap-px sm:grid-cols-6"
+      : "grid w-full min-w-0 grid-cols-6 gap-px";
 
   return (
-    <div className={compact ? "overflow-hidden" : "overflow-hidden rounded-2xl border border-emerald-100 bg-white text-center text-sm"}>
+    <div
+      className={
+        compact
+          ? "overflow-x-auto"
+          : "overflow-x-auto rounded-2xl border border-emerald-100 bg-white text-center"
+      }
+    >
       <div className={gridClassName}>
         {columns.map((column) => (
           <div
@@ -42,7 +52,7 @@ export function CalculationSummaryGrid({
             key={`${column.key}-value`}
             className={`${valueClassName} ${compact ? "bg-white" : ""}`}
           >
-            {column.value}
+            {formatCellValue(column.value)}
           </div>
         ))}
       </div>
