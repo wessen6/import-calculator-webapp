@@ -17,6 +17,7 @@ import {
   type RatesPayload,
   type StoredRateConfig
 } from "@/lib/rates-payload";
+import { notifyInstallPromptCheck } from "@/lib/pwa-tracking";
 import { createStoredCalculation, getFixedRussianExpensesRub } from "@/lib/storage";
 import type { CurrencyCode, RouteCode, TransportType } from "@/lib/types";
 import { FileUploadZone } from "./FileUploadZone";
@@ -376,6 +377,7 @@ export function NewCalculationForm({ initialRates }: NewCalculationFormProps) {
       needsConfirmation: false,
       files: uploadedFiles
     });
+    notifyInstallPromptCheck();
 
     setSubmitPhase("success");
     await waitForPaint();

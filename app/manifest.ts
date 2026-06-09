@@ -2,10 +2,11 @@ import type { MetadataRoute } from "next";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
+    id: "/",
     name: "ImCalc — импортный калькулятор",
     short_name: "ImCalc",
     description: "Мобильное веб-приложение для расчёта импортной себестоимости",
-    start_url: "/calculations",
+    start_url: "/calculations?source=pwa",
     scope: "/",
     display: "standalone",
     orientation: "portrait",

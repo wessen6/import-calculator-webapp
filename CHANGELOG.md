@@ -6,6 +6,17 @@
 
 ---
 
+## 2026-06-09 (PWA — фикс Android)
+
+### Исправлено
+
+- Детекция мобильных по user agent (Android/iOS), не только по ширине экрана.
+- Триггер баннера после любого сохранённого расчёта; явное обновление после `createStoredCalculation`.
+- Manifest: `id`, явный `manifest` link, `start_url` с `?source=pwa`.
+- `update-imcalc.sh`: проверка `manifest.webmanifest`, `sw.js`, иконки после деплоя.
+
+---
+
 ## 2026-06-09 (PWA / установка на экран)
 
 ### Добавлено

@@ -18,11 +18,19 @@ export function isStandaloneMode() {
 }
 
 export function isMobileDevice() {
-  if (typeof window === "undefined") {
+  if (typeof navigator === "undefined") {
     return false;
   }
 
-  return window.matchMedia("(max-width: 1023px)").matches;
+  if (isAndroidDevice() || isIosDevice()) {
+    return true;
+  }
+
+  if (typeof window !== "undefined") {
+    return window.matchMedia("(max-width: 1023px)").matches;
+  }
+
+  return false;
 }
 
 export function isIosDevice() {
@@ -62,7 +70,17 @@ export function isAndroidChrome() {
     return false;
   }
 
-  return isAndroidDevice() && /Chrome/i.test(navigator.userAgent) && !isInAppBrowser();
+  if (!isAndroidDevice() || isInAppBrowser()) {
+    return false;
+  }
+
+  const userAgent = navigator.userAgent;
+  const isChromium =
+    /Chrome/i.test(userAgent) ||
+    /Chromium/i.test(userAgent) ||
+    /SamsungBrowser/i.test(userAgent);
+
+  return isChromium && !/EdgA|OPR|Firefox/i.test(userAgent);
 }
 
 export function canShowInstallPromptUi() {

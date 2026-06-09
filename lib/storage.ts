@@ -9,6 +9,10 @@ const CALCULATIONS_STORAGE_KEY = "import-calculator:calculations";
 const HIDDEN_FALLBACK_STORAGE_KEY = "import-calculator:hidden-fallback-ids";
 const CALCULATIONS_STORAGE_EVENT = "import-calculator:calculations-updated";
 
+function notifyCalculationsUpdated() {
+  window.dispatchEvent(new Event(CALCULATIONS_STORAGE_EVENT));
+}
+
 export type CreateCalculationInput = {
   productName: string;
   quantity: number;
@@ -53,7 +57,7 @@ function writeJson<T>(key: string, value: T) {
   window.localStorage.setItem(key, JSON.stringify(value));
 
   if (key === CALCULATIONS_STORAGE_KEY) {
-    window.dispatchEvent(new Event(CALCULATIONS_STORAGE_EVENT));
+    notifyCalculationsUpdated();
   }
 }
 

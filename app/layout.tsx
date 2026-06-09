@@ -6,6 +6,7 @@ export const metadata: Metadata = {
   title: "ImCalc — импортный калькулятор",
   description: "Мобильное веб-приложение для расчёта импортной себестоимости",
   applicationName: "ImCalc",
+  manifest: "/manifest.webmanifest",
   appleWebApp: {
     capable: true,
     title: "ImCalc",

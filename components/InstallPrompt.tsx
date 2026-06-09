@@ -14,6 +14,7 @@ import {
   dismissInstallPromptForever,
   dismissInstallPromptLater,
   markInstallPromptShown,
+  PWA_PROMPT_EVENT,
   shouldShowInstallPrompt
 } from "@/lib/pwa-tracking";
 import { subscribeToStoredCalculations } from "@/lib/storage";
@@ -22,10 +23,12 @@ import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
 function subscribeToInstallPromptChanges(onStoreChange: () => void) {
   const unsubscribeCalculations = subscribeToStoredCalculations(onStoreChange);
   window.addEventListener("focus", onStoreChange);
+  window.addEventListener(PWA_PROMPT_EVENT, onStoreChange);
 
   return () => {
     unsubscribeCalculations();
     window.removeEventListener("focus", onStoreChange);
+    window.removeEventListener(PWA_PROMPT_EVENT, onStoreChange);
   };
 }
 

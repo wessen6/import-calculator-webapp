@@ -25,4 +25,14 @@ sleep 2
 systemctl is-active --quiet imcalc
 
 HTTP_CODE="$(curl -s -o /dev/null -w "%{http_code}" "$PROD_URL" || true)"
+MANIFEST_CODE="$(curl -s -o /dev/null -w "%{http_code}" "${PROD_URL%/calculations}/manifest.webmanifest" || true)"
+SW_CODE="$(curl -s -o /dev/null -w "%{http_code}" "${PROD_URL%/calculations}/sw.js" || true)"
+ICON_CODE="$(curl -s -o /dev/null -w "%{http_code}" "${PROD_URL%/calculations}/icons/icon-192.png" || true)"
+
 echo "[$(date -Is)] OK — $PROD_URL → HTTP $HTTP_CODE"
+echo "[$(date -Is)] PWA — manifest:$MANIFEST_CODE sw.js:$SW_CODE icon:$ICON_CODE"
+
+if [ "$MANIFEST_CODE" != "200" ] || [ "$SW_CODE" != "200" ] || [ "$ICON_CODE" != "200" ]; then
+  echo "[$(date -Is)] WARN: PWA assets missing. Check npm run build --webpack and public/sw.js on server." >&2
+  exit 1
+fi

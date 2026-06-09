@@ -51,8 +51,18 @@ function writeFlag(key: string, value: boolean) {
   window.localStorage.setItem(key, value ? "1" : "0");
 }
 
-export function getCompletedCalculationCount() {
-  return getStoredCalculations().filter((calculation) => calculation.status === "completed").length;
+export const PWA_PROMPT_EVENT = "pwa:install-prompt-check";
+
+export function getSavedCalculationCount() {
+  return getStoredCalculations().length;
+}
+
+export function notifyInstallPromptCheck() {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  window.dispatchEvent(new Event(PWA_PROMPT_EVENT));
 }
 
 export function recordPwaVisit() {
@@ -80,20 +90,20 @@ export function shouldShowInstallPrompt() {
   }
 
   const visitCount = readNumber(VISIT_COUNT_KEY);
-  const completedCalculations = getCompletedCalculationCount();
+  const savedCalculations = getSavedCalculationCount();
   const calcsAtLastPrompt = readNumber(CALCS_AT_LAST_PROMPT_KEY);
   const hasShownBefore = readFlag(PROMPT_SHOWN_ONCE_KEY);
 
   if (!hasShownBefore) {
-    return visitCount >= FIRST_SHOW_VISIT_COUNT || completedCalculations >= 1;
+    return visitCount >= FIRST_SHOW_VISIT_COUNT || savedCalculations >= 1;
   }
 
-  return completedCalculations - calcsAtLastPrompt >= RECURRING_CALC_STEP;
+  return savedCalculations - calcsAtLastPrompt >= RECURRING_CALC_STEP;
 }
 
 export function markInstallPromptShown() {
   writeFlag(PROMPT_SHOWN_ONCE_KEY, true);
-  writeNumber(CALCS_AT_LAST_PROMPT_KEY, getCompletedCalculationCount());
+  writeNumber(CALCS_AT_LAST_PROMPT_KEY, getSavedCalculationCount());
 }
 
 export function dismissInstallPromptLater() {
