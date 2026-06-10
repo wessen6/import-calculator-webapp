@@ -1,3 +1,4 @@
+import { getCalculationLineItems, isMultiLineCalculation } from "./calculation-display";
 import type { Calculation } from "./types";
 
 export type CalculationSummaryColumn = {
@@ -119,6 +120,36 @@ export function formatSummaryTableForChat(columns: CalculationSummaryColumn[]) {
 }
 
 export function getCalculationSummaryCopyText(calculation: Calculation) {
+  if (isMultiLineCalculation(calculation)) {
+    const items = getCalculationLineItems(calculation);
+    const header = "Товар  Кол-во  Цена  Цена/шт RUB  Цена/шт вал.";
+    const rows = items.map((item) =>
+      [
+        item.product_name,
+        formatQuantity(item.quantity),
+        formatNumber(item.unit_price),
+        typeof item.final_unit_cost_rub === "number"
+          ? formatNumber(item.final_unit_cost_rub)
+          : "—",
+        typeof item.final_unit_cost_foreign === "number"
+          ? formatNumber(item.final_unit_cost_foreign)
+          : "—"
+      ].join("  ")
+    );
+
+    const meta = [
+      `Вал.: ${calculation.currency}`,
+      `Курс: ${formatNumber(calculation.exchange_rate ?? 1, 2)}`,
+      calculation.final_cost_rub
+        ? `Итог партии: ${formatNumber(calculation.final_cost_rub)} RUB`
+        : null
+    ]
+      .filter(Boolean)
+      .join(" | ");
+
+    return `${header}\n${rows.join("\n")}\n${meta}`;
+  }
+
   const columns = getCalculationSummaryColumns(calculation);
 
   return formatSummaryTableForChat(columns);

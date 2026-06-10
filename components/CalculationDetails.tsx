@@ -4,6 +4,7 @@ import Link from "next/link";
 import { btnPressPrimary } from "@/lib/button-interaction";
 import { useMemo, useSyncExternalStore } from "react";
 import { CompactCalculationResult } from "@/components/CompactCalculationResult";
+import { getCalculationDisplayTitle } from "@/lib/calculation-display";
 import { StatusBadge } from "@/components/StatusBadge";
 import { formatDate, formatFileSize, formatMoney } from "@/lib/format";
 import { getStoredCalculationById } from "@/lib/storage";
@@ -39,6 +40,7 @@ export function CalculationDetails({
     [storedCalculationJson]
   );
   const calculation = storedCalculation ?? fallbackCalculation;
+  const displayTitle = calculation ? getCalculationDisplayTitle(calculation) : "";
 
   if (!calculation) {
     return (
@@ -62,7 +64,7 @@ export function CalculationDetails({
       <section className="rounded-[2rem] border border-stone-200 bg-white p-5 shadow-sm">
         <div className="flex items-start justify-between gap-4">
           <div>
-            <h1 className="text-xl font-semibold text-stone-950">{calculation.product_name}</h1>
+            <h1 className="text-xl font-semibold text-stone-950">{displayTitle}</h1>
             <p className="mt-1 text-sm text-stone-500">
               Обновлён {formatDate(calculation.updated_at)}
             </p>

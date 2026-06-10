@@ -3,12 +3,14 @@
 import Link from "next/link";
 import { useState } from "react";
 import { CalculationSummaryGrid } from "@/components/CalculationSummaryGrid";
+import { getCalculationDisplayTitle, isMultiLineCalculation } from "@/lib/calculation-display";
 import {
   getCalculationSummaryCardColumns,
   getCalculationSummaryCopyText,
   getCalculationSummaryMeta,
   hasCalculationSummary
 } from "@/lib/calculation-summary";
+import { CalculationMultiLineSummary } from "@/components/CalculationMultiLineSummary";
 import { btnPressGhost, btnPressRoseGhost } from "@/lib/button-interaction";
 import { formatCardDate } from "@/lib/format";
 import { deleteStoredCalculation } from "@/lib/storage";
@@ -51,6 +53,8 @@ function CloseIcon() {
 
 export function CalculationCard({ calculation }: { calculation: Calculation }) {
   const [copied, setCopied] = useState(false);
+  const isMultiLine = isMultiLineCalculation(calculation);
+  const displayTitle = getCalculationDisplayTitle(calculation);
   const summaryColumns = getCalculationSummaryCardColumns(calculation);
   const summaryCopyText = getCalculationSummaryCopyText(calculation);
   const summaryMeta = getCalculationSummaryMeta(calculation);
@@ -62,7 +66,7 @@ export function CalculationCard({ calculation }: { calculation: Calculation }) {
 
     if (
       !window.confirm(
-        `Удалить расчёт «${calculation.product_name}»? Это действие нельзя отменить.`
+        `Удалить расчёт «${displayTitle}»? Это действие нельзя отменить.`
       )
     ) {
       return;
@@ -92,9 +96,7 @@ export function CalculationCard({ calculation }: { calculation: Calculation }) {
     <article className="relative rounded-[1.75rem] border border-stone-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
       <div className="flex items-start gap-3">
         <Link href={`/calculations/${calculation.id}`} className="min-w-0 flex-1">
-          <h2 className="truncate text-lg font-semibold text-stone-950">
-            {calculation.product_name}
-          </h2>
+          <h2 className="truncate text-lg font-semibold text-stone-950">{displayTitle}</h2>
           <p className="mt-1 text-xs tabular-nums text-stone-500">
             {formatCardDate(calculation.created_at)}
             {summaryMeta ? (
@@ -141,7 +143,11 @@ export function CalculationCard({ calculation }: { calculation: Calculation }) {
       <Link href={`/calculations/${calculation.id}`} className="mt-3 block">
         {showSummary ? (
           <div className="overflow-hidden rounded-2xl border border-stone-200 bg-stone-50">
-            <CalculationSummaryGrid columns={summaryColumns} compact card />
+            {isMultiLine ? (
+              <CalculationMultiLineSummary calculation={calculation} compact />
+            ) : (
+              <CalculationSummaryGrid columns={summaryColumns} compact card />
+            )}
           </div>
         ) : (
           <p className="rounded-2xl bg-stone-50 px-4 py-3 text-sm text-stone-500">

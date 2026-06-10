@@ -1,6 +1,12 @@
 "use client";
 
-import { calculateImportCost, getImportRateConfig } from "./calculate-cost";
+import {
+  calculateImportCost,
+  calculateMultiImportCost,
+  getImportRateConfig,
+  type MultiImportCostBreakdown
+} from "./calculate-cost";
+import { getCalculationDisplayTitle } from "./calculation-display";
 import type { ImportRateConfig } from "./rates-config";
 import type { StoredRateConfig, StoredRateSettings } from "./server-rates-store";
 import type { Calculation, CurrencyCode, RouteCode, TransportType } from "./types";
@@ -13,10 +19,14 @@ function notifyCalculationsUpdated() {
   window.dispatchEvent(new Event(CALCULATIONS_STORAGE_EVENT));
 }
 
-export type CreateCalculationInput = {
+export type CreateCalculationLineItemInput = {
   productName: string;
   quantity: number;
   unitPrice: number;
+};
+
+export type CreateCalculationInput = {
+  lineItems: CreateCalculationLineItemInput[];
   currency: CurrencyCode;
   routeCode: RouteCode;
   routeLabel: string;
@@ -189,7 +199,49 @@ export function getFixedRussianExpensesRub(
   );
 }
 
+function buildCalculationLineItems(
+  input: CreateCalculationInput,
+  calculatedCost: MultiImportCostBreakdown | null
+) {
+  if (!calculatedCost || input.lineItems.length <= 1) {
+    return undefined;
+  }
+
+  return input.lineItems.map((line, index) => {
+    const breakdown = calculatedCost.line_breakdowns[index];
+
+    return {
+      product_name: line.productName,
+      quantity: line.quantity,
+      unit_price: line.unitPrice,
+      invoice_total_foreign: breakdown.invoice_total_foreign,
+      invoice_total_rub: breakdown.invoice_total_rub,
+      final_cost_rub: breakdown.final_cost_rub,
+      final_unit_cost_rub: breakdown.final_unit_cost_rub,
+      final_unit_cost_foreign: breakdown.final_unit_cost_foreign
+    };
+  });
+}
+
+function getPrimaryLineTotals(input: CreateCalculationInput) {
+  const totalQuantity = input.lineItems.reduce((total, line) => total + line.quantity, 0);
+  const totalInvoiceForeign = input.lineItems.reduce(
+    (total, line) => total + line.quantity * line.unitPrice,
+    0
+  );
+
+  return {
+    productName: input.lineItems[0]?.productName ?? "",
+    quantity: totalQuantity,
+    unitPrice: totalQuantity > 0 ? totalInvoiceForeign / totalQuantity : 0
+  };
+}
+
 export function createStoredCalculation(input: CreateCalculationInput) {
+  if (input.lineItems.length === 0) {
+    throw new Error("Нужна хотя бы одна товарная позиция.");
+  }
+
   const baseConfig = getImportRateConfig(input.routeCode);
   const fixedRussianExpensesRub = getFixedRussianExpensesRub(input.rateSettings, input.rateConfig);
   const config: ImportRateConfig = {
@@ -204,21 +256,46 @@ export function createStoredCalculation(input: CreateCalculationInput) {
     input.rateConfig.pre_border_expenses_foreign +
     input.rateConfig.other_pre_border_expenses_foreign;
   const now = new Date().toISOString();
-  const calculatedCost = input.needsConfirmation
+  const costInput = {
+    currency: input.currency,
+    exchangeRate: input.exchangeRate,
+    preBorderExchangeRate: input.preBorderExchangeRate,
+    preBorderExpensesForeign,
+    fixedRussianExpensesRub,
+    config
+  };
+  const calculatedCostRaw = input.needsConfirmation
     ? null
-    : calculateImportCost(
-        {
-          quantity: input.quantity,
-          unitPrice: input.unitPrice,
-          currency: input.currency,
-          exchangeRate: input.exchangeRate,
-          preBorderExchangeRate: input.preBorderExchangeRate,
-          preBorderExpensesForeign,
-          fixedRussianExpensesRub,
-          config
-        },
-        input.exchangeRateSource
-      );
+    : input.lineItems.length === 1
+      ? calculateImportCost(
+          {
+            ...costInput,
+            quantity: input.lineItems[0].quantity,
+            unitPrice: input.lineItems[0].unitPrice
+          },
+          input.exchangeRateSource
+        )
+      : calculateMultiImportCost(
+          input.lineItems.map((line) => ({
+            quantity: line.quantity,
+            unitPrice: line.unitPrice
+          })),
+          costInput,
+          input.exchangeRateSource
+        );
+  const multiCalculatedCost =
+    calculatedCostRaw && "line_breakdowns" in calculatedCostRaw
+      ? (calculatedCostRaw as MultiImportCostBreakdown)
+      : null;
+  const calculatedCost = multiCalculatedCost
+    ? (() => {
+        const { line_breakdowns, ...rest } = multiCalculatedCost;
+        void line_breakdowns;
+        return rest;
+      })()
+    : calculatedCostRaw;
+  const primaryLine = getPrimaryLineTotals(input);
+  const lineItems = buildCalculationLineItems(input, multiCalculatedCost);
   const calculationId = `calc-${Date.now()}`;
   const calculation: Calculation = {
     id: calculationId,
@@ -227,15 +304,16 @@ export function createStoredCalculation(input: CreateCalculationInput) {
     route_label: input.routeLabel,
     transport_type: input.transportType,
     transport_label: input.transportLabel,
-    product_name: input.productName,
-    quantity: input.quantity,
-    unit_price: input.unitPrice,
+    product_name: primaryLine.productName,
+    quantity: primaryLine.quantity,
+    unit_price: Math.round(primaryLine.unitPrice * 10000) / 10000,
     currency: input.currency,
     status: input.needsConfirmation ? "ready_for_confirmation" : "completed",
     message: input.needsConfirmation
       ? "Проверьте данные, распознанные из файла, перед запуском расчёта."
       : undefined,
     ...calculatedCost,
+    line_items: lineItems,
     created_at: now,
     updated_at: now,
     files: input.files.map((file, index) => ({
@@ -247,6 +325,7 @@ export function createStoredCalculation(input: CreateCalculationInput) {
       created_at: now
     }))
   };
+  calculation.product_name = getCalculationDisplayTitle(calculation);
 
   const calculations = [calculation, ...getStoredCalculations()];
   writeJson(CALCULATIONS_STORAGE_KEY, calculations);

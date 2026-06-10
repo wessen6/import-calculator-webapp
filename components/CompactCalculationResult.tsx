@@ -8,6 +8,8 @@ import {
   hasCalculationSummary
 } from "@/lib/calculation-summary";
 import type { Calculation } from "@/lib/types";
+import { isMultiLineCalculation } from "@/lib/calculation-display";
+import { CalculationMultiLineSummary } from "./CalculationMultiLineSummary";
 import { CalculationSummaryGrid } from "./CalculationSummaryGrid";
 
 export function CompactCalculationResult({ calculation }: { calculation: Calculation }) {
@@ -17,6 +19,7 @@ export function CompactCalculationResult({ calculation }: { calculation: Calcula
     return null;
   }
 
+  const isMultiLine = isMultiLineCalculation(calculation);
   const columns = getCalculationSummaryColumns(calculation);
   const copyText = getCalculationSummaryCopyText(calculation);
 
@@ -40,7 +43,11 @@ export function CompactCalculationResult({ calculation }: { calculation: Calcula
       </div>
 
       <div className="mt-4 text-center">
-        <CalculationSummaryGrid columns={columns} />
+        {isMultiLine ? (
+          <CalculationMultiLineSummary calculation={calculation} />
+        ) : (
+          <CalculationSummaryGrid columns={columns} />
+        )}
       </div>
     </section>
   );

@@ -28,7 +28,7 @@ Prod: https://imcalc.wessen.online — задеплоено 2026-06-10 (меню
 - PDF/картинки: OCR.space → OpenRouter (как раньше)
 - Excel (.xlsx) / Word (.docx): lib/office-document-text.ts (xlsx, mammoth) → OpenRouter
 - Env: office — OPENROUTER_API_KEY; PDF — ещё OCR_SPACE_API_KEY
-- Правила: первая товарная строка; 1x40hc:180pcs→180; multi-FCL→qty одного контейнера; China/RMB→CNY
+- Правила qty: 1x40hc:180pcs→180; multi-FCL→qty одного контейнера; China/RMB→CNY; все товарные строки → `items[]`
 - Фикстуры: fixtures/extract-samples/
 
 ### PWA (без изменений в сессии)
@@ -47,8 +47,8 @@ Prod: https://imcalc.wessen.online — задеплоено 2026-06-10 (меню
 
 ## Открытые темы (по приоритету)
 
-1. Мультипозиции: несколько товарных строк в документе и расчёт
-2. rates:smoke под prod-эталон (ставки на проде актуальные)
+1. rates:smoke под prod-эталон (ставки на проде актуальные)
+2. Мультипозиции (доработки): разные валюты/пошлины по строкам — пока одна валюта на расчёт
 3. Повтор PWA-баннера после удаления с экрана (отложено)
 4. Push-уведомления (отложено)
 
@@ -58,6 +58,7 @@ Prod: https://imcalc.wessen.online — задеплоено 2026-06-10 (меню
 
 - История меню: components/CalculationsHistoryMenu.tsx, CalculationsHistoryTransfer.tsx
 - Распознавание: app/api/extract-file-data/route.ts, lib/office-document-text.ts
+- Мультипозиции: lib/calculate-cost.ts (`calculateMultiImportCost`), CalculationLineItemsEditor.tsx, CalculationMultiLineSummary.tsx
 - Форма: components/NewCalculationForm.tsx, FileUploadZone.tsx
 - PWA: app/manifest.ts, app/sw.ts, components/InstallPrompt.tsx
 - Деплой: deploy/update-imcalc.sh, deploy/DEPLOY.md

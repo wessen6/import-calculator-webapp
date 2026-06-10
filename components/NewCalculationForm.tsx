@@ -20,6 +20,11 @@ import {
 import { notifyInstallPromptCheck } from "@/lib/pwa-tracking";
 import { createStoredCalculation, getFixedRussianExpensesRub } from "@/lib/storage";
 import type { CurrencyCode, RouteCode, TransportType } from "@/lib/types";
+import {
+  CalculationLineItemsEditor,
+  createEmptyLineItem,
+  type CalculationLineItemDraft
+} from "./CalculationLineItemsEditor";
 import { FileUploadZone } from "./FileUploadZone";
 
 const currencies: CurrencyCode[] = ["CNY", "USD", "EUR", "RUB"];
@@ -31,9 +36,11 @@ type ExchangeRateApiResponse = {
 
 type ExtractFileDataResponse = {
   data?: {
-    product_name?: string;
-    quantity?: number;
-    unit_price?: number;
+    items?: Array<{
+      product_name?: string;
+      quantity?: number;
+      unit_price?: number;
+    }>;
     currency?: CurrencyCode;
   };
   error?: string;
@@ -77,9 +84,7 @@ export function NewCalculationForm({ initialRates }: NewCalculationFormProps) {
   const [selectedRoute, setSelectedRoute] = useState<StoredRateConfig | null>(
     initialSelectableConfigs[0] ?? null
   );
-  const [productName, setProductName] = useState("");
-  const [quantity, setQuantity] = useState("");
-  const [unitPrice, setUnitPrice] = useState("");
+  const [lineItems, setLineItems] = useState<CalculationLineItemDraft[]>([createEmptyLineItem()]);
   const [currency, setCurrency] = useState<CurrencyCode>("CNY");
   const [extractPhase, setExtractPhase] = useState<BusyOverlayPhase | null>(null);
   const [submitPhase, setSubmitPhase] = useState<BusyOverlayPhase | null>(null);
@@ -237,20 +242,32 @@ export function NewCalculationForm({ initialRates }: NewCalculationFormProps) {
       await waitForPaint();
       await sleep(500);
 
+      const extractedItems = result.data?.items ?? [];
       const updatedFields: HighlightedField[] = [];
 
-      if (result.data?.product_name) {
-        setProductName(result.data.product_name);
-        updatedFields.push("product");
+      if (extractedItems.length > 0) {
+        setLineItems(
+          extractedItems.map((item) => ({
+            id: `line-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+            productName: item.product_name ?? "",
+            quantity:
+              typeof item.quantity === "number" ? String(item.quantity) : "",
+            unitPrice:
+              typeof item.unit_price === "number" ? String(item.unit_price) : ""
+          }))
+        );
+
+        if (extractedItems.some((item) => item.product_name)) {
+          updatedFields.push("product");
+        }
+        if (extractedItems.some((item) => typeof item.quantity === "number")) {
+          updatedFields.push("quantity");
+        }
+        if (extractedItems.some((item) => typeof item.unit_price === "number")) {
+          updatedFields.push("price");
+        }
       }
-      if (typeof result.data?.quantity === "number") {
-        setQuantity(String(result.data.quantity));
-        updatedFields.push("quantity");
-      }
-      if (typeof result.data?.unit_price === "number") {
-        setUnitPrice(String(result.data.unit_price));
-        updatedFields.push("price");
-      }
+
       if (result.data?.currency) {
         setCurrency(result.data.currency);
         updatedFields.push("currency");
@@ -277,10 +294,19 @@ export function NewCalculationForm({ initialRates }: NewCalculationFormProps) {
     setFormError(null);
 
     const formData = new FormData(event.currentTarget);
-    const submittedProductName = String(formData.get("product_name") ?? "").trim();
-    const submittedQuantity = parseDecimalInput(formData.get("quantity"));
-    const submittedUnitPrice = parseDecimalInput(formData.get("unit_price"));
     const submittedCurrency = String(formData.get("currency") ?? "CNY") as CurrencyCode;
+    const submittedLineItems = lineItems
+      .map((item) => ({
+        productName: item.productName.trim(),
+        quantity: parseDecimalString(item.quantity),
+        unitPrice: parseDecimalString(item.unitPrice)
+      }))
+      .filter(
+        (item) =>
+          item.productName ||
+          (item.quantity !== null && item.quantity > 0) ||
+          (item.unitPrice !== null && item.unitPrice >= 0)
+      );
     const routeCode = String(formData.get("route_code") ?? selectedRoute?.route_code) as RouteCode;
     const transportType = String(
       formData.get("transport_type") ?? selectedRoute?.transport_type
@@ -305,14 +331,24 @@ export function NewCalculationForm({ initialRates }: NewCalculationFormProps) {
       return;
     }
 
-    if (
-      !submittedProductName ||
-      !Number.isFinite(submittedQuantity) ||
-      submittedQuantity <= 0 ||
-      !Number.isFinite(submittedUnitPrice)
-    ) {
+    if (submittedLineItems.length === 0) {
       setSubmitPhase(null);
-      setFormError("Заполните название товара, количество и цену.");
+      setFormError("Добавьте хотя бы одну товарную позицию.");
+      return;
+    }
+
+    const invalidLine = submittedLineItems.find(
+      (item) =>
+        !item.productName ||
+        item.quantity === null ||
+        item.quantity <= 0 ||
+        item.unitPrice === null ||
+        item.unitPrice < 0
+    );
+
+    if (invalidLine) {
+      setSubmitPhase(null);
+      setFormError("У каждой позиции укажите название, количество и цену.");
       return;
     }
 
@@ -358,9 +394,11 @@ export function NewCalculationForm({ initialRates }: NewCalculationFormProps) {
     }
 
     const calculation = createStoredCalculation({
-      productName: submittedProductName,
-      quantity: submittedQuantity,
-      unitPrice: submittedUnitPrice,
+      lineItems: submittedLineItems.map((item) => ({
+        productName: item.productName,
+        quantity: item.quantity!,
+        unitPrice: item.unitPrice!
+      })),
       currency: submittedCurrency,
       routeCode,
       routeLabel: selectedRoute.route_label,
@@ -388,16 +426,20 @@ export function NewCalculationForm({ initialRates }: NewCalculationFormProps) {
   const preBorderExpensesUsd = selectedRoute?.pre_border_expenses_foreign ?? 0;
   const preBorderExpensesRub =
     usdExchangeRate !== null ? preBorderExpensesUsd * usdExchangeRate : null;
-  const parsedQuantity = parseDecimalString(quantity);
-  const parsedUnitPrice = parseDecimalString(unitPrice);
   const selectedExchangeRate =
     exchangeRate?.currency === currency ? exchangeRate.value : null;
   const invoiceTotalRub =
-    selectedExchangeRate !== null &&
-    Number.isFinite(selectedExchangeRate) &&
-    parsedQuantity !== null &&
-    parsedUnitPrice !== null
-      ? parsedQuantity * parsedUnitPrice * selectedExchangeRate
+    selectedExchangeRate !== null && Number.isFinite(selectedExchangeRate)
+      ? lineItems.reduce((total, item) => {
+          const parsedQuantity = parseDecimalString(item.quantity);
+          const parsedUnitPrice = parseDecimalString(item.unitPrice);
+
+          if (parsedQuantity === null || parsedUnitPrice === null) {
+            return total;
+          }
+
+          return total + parsedQuantity * parsedUnitPrice * selectedExchangeRate;
+        }, 0)
       : null;
   const fixedRussianExpensesRub =
     selectedRoute && rateSettings ? getFixedRussianExpensesRub(rateSettings, selectedRoute) : 0;
@@ -421,6 +463,10 @@ export function NewCalculationForm({ initialRates }: NewCalculationFormProps) {
     `${getFieldClassName(field)} ${selectFieldClass}`;
   const readOnlyFieldClassName =
     "mt-2 w-full cursor-default rounded-2xl border border-dashed border-stone-300 bg-stone-100 px-4 py-3 text-base font-semibold text-stone-600 outline-none";
+  const readOnlyInputClassName =
+    "mt-2 min-w-0 flex-1 cursor-default rounded-l-2xl border border-dashed border-stone-300 bg-stone-100 px-4 py-3 text-base font-semibold text-stone-600 outline-none";
+  const readOnlyCurrencySuffixClassName =
+    "mt-2 shrink-0 rounded-r-2xl border border-l-0 border-dashed border-stone-300 bg-stone-100 px-3 py-3 text-sm font-semibold text-stone-500";
   const isManualExchangeRate = getManualRate(currency) !== null;
   const isExchangeRateLoading =
     currency !== "RUB" &&
@@ -498,61 +544,14 @@ export function NewCalculationForm({ initialRates }: NewCalculationFormProps) {
         className="rounded-[2rem] border border-stone-200 bg-white p-5 shadow-sm"
         aria-busy={isExtracting}
       >
-        <div>
-          <label className="text-sm font-semibold text-stone-900" htmlFor="product_name">
-            Название товара
-          </label>
-          <input
-            id="product_name"
-            name="product_name"
-            value={productName}
-            onChange={(event) => {
-              setProductName(event.target.value);
-              triggerFieldHighlight(["product"]);
-            }}
-            placeholder="Например, CRATE KSK-6428"
-            className={getFieldClassName("product")}
-          />
-        </div>
-
-        <div className="mt-4 grid grid-cols-2 gap-3">
-          <div>
-            <label className="text-sm font-semibold text-stone-900" htmlFor="quantity">
-              Количество
-            </label>
-            <input
-              id="quantity"
-              name="quantity"
-              type="text"
-              inputMode="decimal"
-              value={quantity}
-              onChange={(event) => {
-                setQuantity(event.target.value);
-                triggerFieldHighlight(["quantity"]);
-              }}
-              placeholder="240"
-              className={getFieldClassName("quantity")}
-            />
-          </div>
-          <div>
-            <label className="text-sm font-semibold text-stone-900" htmlFor="unit_price">
-              Цена за единицу
-            </label>
-            <input
-              id="unit_price"
-              name="unit_price"
-              type="text"
-              inputMode="decimal"
-              value={unitPrice}
-              onChange={(event) => {
-                setUnitPrice(event.target.value);
-                triggerFieldHighlight(["price"]);
-              }}
-              placeholder="8.70"
-              className={getFieldClassName("price")}
-            />
-          </div>
-        </div>
+        <CalculationLineItemsEditor
+          items={lineItems}
+          highlightedFields={highlightedFields.filter((field): field is "product" | "quantity" | "price" =>
+            field === "product" || field === "quantity" || field === "price"
+          )}
+          onChange={setLineItems}
+          getFieldClassName={getFieldClassName}
+        />
 
         <div className="mt-4 grid grid-cols-2 gap-3">
           <div>
@@ -679,39 +678,44 @@ export function NewCalculationForm({ initialRates }: NewCalculationFormProps) {
         <div className="mt-4 grid grid-cols-2 gap-3">
           <div>
             <label className="text-sm font-semibold text-stone-700" htmlFor="pre_border_expenses_foreign">
-              До границы <span className="font-normal text-stone-400">из ставок</span>
+              До границы
             </label>
-            <input
-              key={`${selectedRoute?.route_code ?? "route"}-pre-border`}
-              id="pre_border_expenses_foreign"
-              name="pre_border_expenses_foreign"
-              type="number"
-              value={selectedRoute?.pre_border_expenses_foreign ?? 0}
-              readOnly
-              className={readOnlyFieldClassName}
-            />
+            <div className="flex">
+              <input
+                key={`${selectedRoute?.route_code ?? "route"}-pre-border`}
+                id="pre_border_expenses_foreign"
+                name="pre_border_expenses_foreign"
+                type="text"
+                value={selectedRoute?.pre_border_expenses_foreign ?? 0}
+                readOnly
+                className={readOnlyInputClassName}
+              />
+              <span className={readOnlyCurrencySuffixClassName}>USD</span>
+            </div>
             <p className="mt-1 text-xs text-stone-400">
-              USD
               {preBorderExpensesRub !== null
-                ? `, примерно ${formatRub(preBorderExpensesRub)} RUB`
-                : ", RUB посчитается после получения курса USD"}
+                ? `${formatRub(preBorderExpensesRub)} руб.`
+                : "посчитается после получения курса"}
             </p>
           </div>
           <div>
             <label className="text-sm font-semibold text-stone-700" htmlFor="fixed_russian_expenses_rub">
-              Расходы РФ <span className="font-normal text-stone-400">из ставок</span>
+              Расходы РФ
             </label>
-            <input
-              key={`${selectedRoute?.route_code ?? "route"}-rf`}
-              id="fixed_russian_expenses_rub"
-              name="fixed_russian_expenses_rub"
-              type="text"
-              value={russianExpensesDisplay}
-              readOnly
-              className={readOnlyFieldClassName}
-            />
+            <div className="flex">
+              <input
+                key={`${selectedRoute?.route_code ?? "route"}-rf`}
+                id="fixed_russian_expenses_rub"
+                name="fixed_russian_expenses_rub"
+                type="text"
+                value={russianExpensesDisplay}
+                readOnly
+                className={readOnlyInputClassName}
+              />
+              <span className={readOnlyCurrencySuffixClassName}>RUB</span>
+            </div>
             <p className="mt-1 text-xs text-stone-400">
-              RUB, по ставкам админки с НДС где применимо
+              по ставкам админки с НДС + банк. %
             </p>
           </div>
         </div>
@@ -741,8 +745,8 @@ export function NewCalculationForm({ initialRates }: NewCalculationFormProps) {
           <h2 className="text-base font-semibold text-stone-950">Файлы</h2>
           <p className="mt-1 text-sm text-stone-500">Загрузите документ для распознавания.</p>
           <p className="mt-3 rounded-2xl border border-amber-100 bg-amber-50 px-4 py-3 text-sm leading-5 text-amber-800">
-            Сейчас расчёт поддерживает одну товарную позицию. Если в документе несколько строк,
-            проверьте распознанные данные перед расчётом.
+            Из документа распознаются все товарные строки. Проверьте позиции и при необходимости
+            отредактируйте перед расчётом.
           </p>
           <div className="mt-4 space-y-3">
             <FileUploadZone

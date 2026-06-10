@@ -24,6 +24,18 @@ export type CalculationFile = {
   created_at: string;
 };
 
+/** Товарная строка в мультипозиционном расчёте (опционально на Calculation). */
+export type CalculationLineItem = {
+  product_name: string;
+  quantity: number;
+  unit_price: number;
+  invoice_total_foreign?: number | null;
+  invoice_total_rub?: number | null;
+  final_cost_rub?: number | null;
+  final_unit_cost_rub?: number | null;
+  final_unit_cost_foreign?: number | null;
+};
+
 export type Calculation = {
   id: string;
   profile_id: string;
@@ -52,6 +64,7 @@ export type Calculation = {
   final_cost_rub?: number | null;
   final_unit_cost_rub?: number | null;
   final_unit_cost_foreign?: number | null;
+  line_items?: CalculationLineItem[];
   created_at: string;
   updated_at: string;
   files: CalculationFile[];

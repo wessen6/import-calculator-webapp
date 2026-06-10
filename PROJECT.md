@@ -86,6 +86,13 @@ npm run start
 ### Таблица «Итог» (карточка расчёта)
 
 `components/CalculationSummaryGrid.tsx` — 6 колонок в одну строку; динамический размер шрифта (`clamp`), `tabular-nums`, неразрывные пробелы в числах.
+
+### Мультипозиционный расчёт
+
+- Форма «Новый расчёт»: несколько товарных строк (`CalculationLineItemsEditor.tsx`).
+- Распознавание (`/api/extract-file-data`): JSON `items[]` — все позиции из документа.
+- Расчёт (`lib/calculate-cost.ts`): общая логистика/таможня на партию; доля на строку — пропорционально инвойсу в RUB.
+- История: `Calculation.line_items` (только при 2+ позициях); карточка и детали — `CalculationMultiLineSummary.tsx`.
 - Персистентные ставки: `APP_DATA_DIR` (рекомендуется `/var/lib/imcalc/app-data`) или `.app-data` в cwd.
 - Seed: `data/rates.seed.json`, шаблон `data/rates.example.json`, автобэкап `.app-data/rates.backup.json`.
 

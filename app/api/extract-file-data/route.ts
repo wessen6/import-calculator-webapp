@@ -20,11 +20,27 @@ function getOpenRouterHttpReferer() {
   return "https://imcalc.wessen.online";
 }
 
+type ExtractedLineItem = {
+  product_name?: string;
+  quantity?: number;
+  unit_price?: number;
+};
+
 type ExtractedCalculationData = {
+  items?: ExtractedLineItem[];
   product_name?: string;
   quantity?: number;
   unit_price?: number;
   currency?: "CNY" | "USD" | "EUR" | "RUB";
+};
+
+type NormalizedExtractedData = {
+  items: Array<{
+    product_name?: string;
+    quantity?: number;
+    unit_price?: number;
+  }>;
+  currency?: ExtractedCalculationData["currency"];
 };
 
 function isOcrDocument(file: File) {
@@ -166,12 +182,67 @@ function inferDataFromOcrText(text: string): ExtractedCalculationData {
   };
 }
 
-function normalizeExtractedData(data: ExtractedCalculationData, fallback: ExtractedCalculationData) {
+function normalizeLineItem(
+  item: ExtractedLineItem,
+  fallback?: ExtractedLineItem
+): NormalizedExtractedData["items"][number] {
   return {
-    ...(data.product_name ? { product_name: data.product_name } : fallback.product_name ? { product_name: fallback.product_name } : {}),
-    ...(typeof data.quantity === "number" ? { quantity: data.quantity } : typeof fallback.quantity === "number" ? { quantity: fallback.quantity } : {}),
-    ...(typeof data.unit_price === "number" ? { unit_price: data.unit_price } : typeof fallback.unit_price === "number" ? { unit_price: fallback.unit_price } : {}),
-    ...(isCurrency(data.currency) ? { currency: data.currency } : isCurrency(fallback.currency) ? { currency: fallback.currency } : {})
+    ...(item.product_name
+      ? { product_name: item.product_name }
+      : fallback?.product_name
+        ? { product_name: fallback.product_name }
+        : {}),
+    ...(typeof item.quantity === "number"
+      ? { quantity: item.quantity }
+      : typeof fallback?.quantity === "number"
+        ? { quantity: fallback.quantity }
+        : {}),
+    ...(typeof item.unit_price === "number"
+      ? { unit_price: item.unit_price }
+      : typeof fallback?.unit_price === "number"
+        ? { unit_price: fallback.unit_price }
+        : {})
+  };
+}
+
+function normalizeExtractedData(
+  data: ExtractedCalculationData,
+  fallback: ExtractedCalculationData
+): NormalizedExtractedData {
+  const fallbackItem: ExtractedLineItem = {
+    ...(fallback.product_name ? { product_name: fallback.product_name } : {}),
+    ...(typeof fallback.quantity === "number" ? { quantity: fallback.quantity } : {}),
+    ...(typeof fallback.unit_price === "number" ? { unit_price: fallback.unit_price } : {})
+  };
+
+  const rawItems =
+    Array.isArray(data.items) && data.items.length > 0
+      ? data.items
+      : data.product_name || typeof data.quantity === "number" || typeof data.unit_price === "number"
+        ? [
+            {
+              product_name: data.product_name,
+              quantity: data.quantity,
+              unit_price: data.unit_price
+            }
+          ]
+        : fallbackItem.product_name ||
+            typeof fallbackItem.quantity === "number" ||
+            typeof fallbackItem.unit_price === "number"
+          ? [fallbackItem]
+          : [];
+
+  const items = rawItems.map((item, index) =>
+    normalizeLineItem(item, index === 0 ? fallbackItem : undefined)
+  );
+
+  return {
+    items,
+    ...(isCurrency(data.currency)
+      ? { currency: data.currency }
+      : isCurrency(fallback.currency)
+        ? { currency: fallback.currency }
+        : {})
   };
 }
 
@@ -244,11 +315,11 @@ async function parseInvoiceTextWithOpenRouter(text: string, apiKey: string) {
           {
             role: "user",
             content:
-              'Из текста ниже извлеки JSON вида {"product_name": string, "quantity": number, "unit_price": number, "currency": "CNY"|"USD"|"EUR"|"RUB"}. ' +
-              "Если в документе несколько товарных строк, возьми только первую основную позицию. " +
+              'Из текста ниже извлеки JSON вида {"items":[{"product_name":string,"quantity":number,"unit_price":number}],"currency":"CNY"|"USD"|"EUR"|"RUB"}. ' +
+              "items — все товарные строки из invoice/packing list (каждая позиция отдельным объектом). " +
               "quantity — количество штук/PCS для расчёта одной партии: если указано «1x40hc:180pcs», бери 180; если несколько контейнеров, бери загрузку одного контейнера (например each container load 22700pcs → 22700), не общий итог. " +
               "unit_price — цена за единицу, product_name — название товара. " +
-              "currency: RMB/¥/юани/FOB China → CNY, $ → USD. " +
+              "currency — общая валюта документа: RMB/¥/юани/FOB China → CNY, $ → USD. " +
               "Если значение не найдено, не включай поле. Текст:\n\n" +
               text
           }
