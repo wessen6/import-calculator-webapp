@@ -8,32 +8,36 @@
 Продолжи Next.js import-calculator-webapp.
 
 Git: https://github.com/wessen6/import-calculator-webapp
-Ветка: main (35a2680). Handoff: SESSION_SUMMARY.md
-Prod: https://imcalc.wessen.online — PWA установка работает (Android Chrome, iOS Safari)
+Ветка: main (764c314). Handoff: SESSION_SUMMARY.md
+Prod: https://imcalc.wessen.online — задеплоено 2026-06-10 (меню истории + Excel/Word)
 Деплой: update-imcalc.sh на VPS после push
 
 Не ломать расчёт, админку ставок и PWA. Не трогать n8n runtime. Не коммить без команды.
 
 ---
 
-## Контекст (2026-06-09)
+## Контекст (2026-06-10)
 
-### PWA (Serwist)
-- manifest: app/manifest.ts → /manifest.webmanifest
-- SW: app/sw.ts → public/sw.js (только при npm run build --webpack)
-- Баннер: components/InstallPrompt.tsx + lib/pwa-tracking.ts
-- Показ: 5-й визит ИЛИ 1-й расчёт; повтор +3 расчёта; «Не напоминать» = localStorage навсегда
-- Кнопки Android: Не напоминать | Установить | Позже (одна строка)
-- iOS: Не напоминать | Позже (по центру)
-- Dev: SW отключён; полная проверка PWA — npm run build && npm run start
+### История — экспорт/импорт
+- Меню **⋯** в хедере `/calculations` (только эта страница)
+- Мобильные: bottom sheet; десктоп (lg+): модалка по центру (~⅓ экрана)
+- Компоненты: CalculationsHistoryMenu.tsx, CalculationsHistoryTransfer.tsx
+- Подписи: «Экспорт истории JSON» / «Импорт истории JSON»; импорт = merge в localStorage
 
-### UI
-- Таблица «Итог»: components/CalculationSummaryGrid.tsx — 6 колонок в ряд, clamp-шрифт
+### Новый расчёт — распознавание файлов
+- PDF/картинки: OCR.space → OpenRouter (как раньше)
+- Excel (.xlsx) / Word (.docx): lib/office-document-text.ts (xlsx, mammoth) → OpenRouter
+- Env: office — OPENROUTER_API_KEY; PDF — ещё OCR_SPACE_API_KEY
+- Правила: первая товарная строка; 1x40hc:180pcs→180; multi-FCL→qty одного контейнера; China/RMB→CNY
+- Фикстуры: fixtures/extract-samples/
 
-### API (ранее)
-- GET /api/rates — только с x-owner-password
-- Ставки в RSC: readRatesPayload() на /calculations/new и /settings/rates
-- OCR: rate limit middleware, referer OpenRouter
+### PWA (без изменений в сессии)
+- Serwist, InstallPrompt, lib/pwa-tracking.ts
+- build = next build --webpack; SW отключён в dev
+
+### API / ставки (без изменений)
+- GET /api/rates — x-owner-password; RSC readRatesPayload()
+- OCR rate limit middleware
 
 Перед нетривиальными задачами: короткий план (5–10 шагов).
 После изменений: npm run typecheck, lint, build.
@@ -41,18 +45,21 @@ Prod: https://imcalc.wessen.online — PWA установка работает (
 
 ---
 
-## Открытые темы (не обязательны)
+## Открытые темы (по приоритету)
 
-- Повтор баннера установки после удаления PWA с экрана (сейчас флаги в localStorage сохраняются)
-- Push-уведомления (отложено)
-- rates:smoke под prod-эталон
+1. Мультипозиции: несколько товарных строк в документе и расчёт
+2. rates:smoke под prod-эталон (ставки на проде актуальные)
+3. Повтор PWA-баннера после удаления с экрана (отложено)
+4. Push-уведомления (отложено)
 
 ---
 
 ## Файлы-ориентиры
 
-- PWA: app/manifest.ts, app/sw.ts, components/InstallPrompt.tsx, lib/pwa-*.ts
+- История меню: components/CalculationsHistoryMenu.tsx, CalculationsHistoryTransfer.tsx
+- Распознавание: app/api/extract-file-data/route.ts, lib/office-document-text.ts
+- Форма: components/NewCalculationForm.tsx, FileUploadZone.tsx
+- PWA: app/manifest.ts, app/sw.ts, components/InstallPrompt.tsx
 - Деплой: deploy/update-imcalc.sh, deploy/DEPLOY.md
-- Итог: components/CalculationSummaryGrid.tsx, components/CompactCalculationResult.tsx
 - Доки: PROJECT.md, CHANGELOG.md, SESSION_SUMMARY.md
 ```
