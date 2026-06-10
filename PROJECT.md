@@ -22,7 +22,7 @@
 app/                          # страницы и API (frontend + backend в одном Next-приложении)
   api/
     exchange-rate/route.ts    # курс ЦБ
-    extract-file-data/route.ts # OCR + OpenRouter + fallback-парсер
+    extract-file-data/route.ts # OCR/PDF/картинки + xlsx/docx → OpenRouter + fallback
     rates/route.ts            # GET/PUT ставок
   calculations/               # список, new, [id]
   settings/rates/             # UI ставок

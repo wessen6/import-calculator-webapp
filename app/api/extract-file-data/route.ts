@@ -1,4 +1,8 @@
 import { formatExternalServiceError } from "@/lib/format-api-error";
+import {
+  extractTextFromOfficeDocument,
+  isOfficeDocument
+} from "@/lib/office-document-text";
 import { NextResponse } from "next/server";
 
 const OCR_SPACE_URL = "https://api.ocr.space/parse/image";
@@ -23,12 +27,16 @@ type ExtractedCalculationData = {
   currency?: "CNY" | "USD" | "EUR" | "RUB";
 };
 
-function isSupportedFile(file: File) {
+function isOcrDocument(file: File) {
   return (
     file.type.startsWith("image/") ||
     file.type === "application/pdf" ||
     file.name.toLowerCase().endsWith(".pdf")
   );
+}
+
+function isExtractableFile(file: File) {
+  return isOfficeDocument(file) || isOcrDocument(file);
 }
 
 function isCurrency(value: unknown): value is ExtractedCalculationData["currency"] {
@@ -116,18 +124,38 @@ function findProductName(lines: string[]) {
 }
 
 function findCurrency(text: string): ExtractedCalculationData["currency"] | undefined {
-  if (/\b(CNY|RMB)\b|¥/i.test(text)) return "CNY";
+  if (/\b(CNY|RMB)\b|¥|RMB\/pcs/i.test(text)) return "CNY";
   if (/\b(USD|US DOLLAR)\b|\$/i.test(text)) return "USD";
   if (/\bEUR\b|€/i.test(text)) return "EUR";
   if (/\b(RUB|RUR)\b|₽/i.test(text)) return "RUB";
+  if (/\b(China|Shanghai|Qingdao|QINGDAO)\b/i.test(text)) return "CNY";
+  return undefined;
+}
+
+function inferQuantityFromText(text: string) {
+  const containerPieces = text.match(/1x40hc:\s*(\d+)\s*pcs/i);
+  if (containerPieces) {
+    return Number(containerPieces[1]);
+  }
+
+  const perContainer = text.match(/each container load\s*(\d+)\s*pcs/i);
+  if (perContainer) {
+    return Number(perContainer[1]);
+  }
+
   return undefined;
 }
 
 function inferDataFromOcrText(text: string): ExtractedCalculationData {
   const lines = normalizeOcrLines(text);
   const productName = findProductName(lines);
-  const quantity = firstNumberAfter(lines, /\b(QTY|QUANTITY|QTY\/PCS)\b/i);
-  const unitPrice = firstNumberAfter(lines, /\b(UNIT PRICE|EXW -UNIT|PRICE)\b/i);
+  const quantity =
+    inferQuantityFromText(text) ??
+    firstNumberAfter(lines, /\b(QTY|QUANTITY|QTY\/PCS|PCS)\b/i);
+  const unitPrice = firstNumberAfter(
+    lines,
+    /\b(UNIT PRICE|FOB\s*PRICE|EXW -UNIT|PRICE)\b/i
+  );
   const currency = findCurrency(text);
 
   return {
@@ -217,8 +245,10 @@ async function parseInvoiceTextWithOpenRouter(text: string, apiKey: string) {
             role: "user",
             content:
               'Из текста ниже извлеки JSON вида {"product_name": string, "quantity": number, "unit_price": number, "currency": "CNY"|"USD"|"EUR"|"RUB"}. ' +
-              "Если в invoice несколько товарных строк, возьми первую основную товарную позицию. " +
-              "quantity — количество штук/PCS, unit_price — цена за единицу, product_name — название товара, currency — валюта цены ($ означает USD). " +
+              "Если в документе несколько товарных строк, возьми только первую основную позицию. " +
+              "quantity — количество штук/PCS для расчёта одной партии: если указано «1x40hc:180pcs», бери 180; если несколько контейнеров, бери загрузку одного контейнера (например each container load 22700pcs → 22700), не общий итог. " +
+              "unit_price — цена за единицу, product_name — название товара. " +
+              "currency: RMB/¥/юани/FOB China → CNY, $ → USD. " +
               "Если значение не найдено, не включай поле. Текст:\n\n" +
               text
           }
@@ -245,14 +275,13 @@ async function parseInvoiceTextWithOpenRouter(text: string, apiKey: string) {
 }
 
 export async function POST(request: Request) {
-  const ocrApiKey = process.env.OCR_SPACE_API_KEY;
   const openRouterApiKey = process.env.OPENROUTER_API_KEY;
 
-  if (!ocrApiKey || !openRouterApiKey) {
+  if (!openRouterApiKey) {
     return NextResponse.json(
       {
         error:
-          "OCR/LLM не настроен: добавьте OCR_SPACE_API_KEY и OPENROUTER_API_KEY в окружение сервера."
+          "LLM не настроен: добавьте OPENROUTER_API_KEY в окружение сервера."
       },
       { status: 501 }
     );
@@ -281,18 +310,43 @@ export async function POST(request: Request) {
     );
   }
 
-  if (!isSupportedFile(file)) {
+  if (!isExtractableFile(file)) {
     return NextResponse.json(
-      { error: "Поддерживаются изображения и PDF." },
+      { error: "Поддерживаются PDF, изображения, Excel (.xlsx) и Word (.docx)." },
       { status: 400 }
     );
   }
 
   try {
-    const text = await extractTextWithOcrSpace(file, ocrApiKey);
+    let text: string;
 
-    if (!text) {
-      return NextResponse.json({ error: "OCR не нашёл текст в файле." }, { status: 422 });
+    if (isOfficeDocument(file)) {
+      text = await extractTextFromOfficeDocument(file);
+
+      if (!text) {
+        return NextResponse.json(
+          { error: "Не удалось извлечь текст из office-документа." },
+          { status: 422 }
+        );
+      }
+    } else {
+      const ocrApiKey = process.env.OCR_SPACE_API_KEY;
+
+      if (!ocrApiKey) {
+        return NextResponse.json(
+          {
+            error:
+              "OCR не настроен: добавьте OCR_SPACE_API_KEY в окружение сервера для PDF и изображений."
+          },
+          { status: 501 }
+        );
+      }
+
+      text = await extractTextWithOcrSpace(file, ocrApiKey);
+
+      if (!text) {
+        return NextResponse.json({ error: "OCR не нашёл текст в файле." }, { status: 422 });
+      }
     }
 
     const data = await parseInvoiceTextWithOpenRouter(text, openRouterApiKey);

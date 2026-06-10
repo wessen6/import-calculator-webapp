@@ -202,7 +202,7 @@ export function NewCalculationForm({ initialRates }: NewCalculationFormProps) {
     const file = fileInput?.files?.[0];
 
     if (!file) {
-      setFormError("Выберите invoice или PDF/картинку для распознавания.");
+      setFormError("Выберите документ (PDF, изображение, Excel или Word) для распознавания.");
       return;
     }
 
@@ -748,7 +748,7 @@ export function NewCalculationForm({ initialRates }: NewCalculationFormProps) {
             <FileUploadZone
               name="invoice"
               label="Proforma, Invoice, Счет, КП"
-              description="PDF или изображение"
+              description="PDF, изображение, Excel или Word"
               onFileChange={(file) => setHasInvoiceFile(file !== null && file.size > 0)}
             />
           </div>

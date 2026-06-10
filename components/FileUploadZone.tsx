@@ -72,7 +72,7 @@ export function FileUploadZone({ label, description, name, onFileChange }: FileU
         name={name}
         type="file"
         className="sr-only"
-        accept=".pdf,.png,.jpg,.jpeg"
+        accept=".pdf,.png,.jpg,.jpeg,.xlsx,.docx"
         onChange={(event) => {
           const file = event.target.files?.[0];
           setSelectedFile(file ?? null);
