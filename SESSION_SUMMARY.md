@@ -1,68 +1,70 @@
 # SESSION_SUMMARY.md
 
-Handoff: **2026-06-10** (история UI + Excel/Word). Новая вкладка → `RESUME_PROMPT.md`.
+Handoff: **2026-06-10** (мультипозиции + UX формы/таблицы). Новая вкладка → `RESUME_PROMPT.md`.
 
 ## 1. Что уже сделано
 
-### Экспорт/импорт истории (prod ✅)
-- Блок убран со страницы «История»; доступ через **⋯** в хедере `/calculations`.
-- `components/CalculationsHistoryMenu.tsx` — кнопка ⋯ + панель:
-  - **мобильные:** bottom sheet снизу;
-  - **десктоп (`lg+`):** модальное окно по центру (~⅓ ширины).
-- `components/CalculationsHistoryTransfer.tsx` — «Экспорт истории JSON» / «Импорт истории JSON»; импорт merge как раньше.
-- Другие страницы не затронуты.
+### Мультипозиционный расчёт (main ✅, push `e380127`)
+- **Распознавание:** `/api/extract-file-data` → `items[]` (все товарные строки) + `currency`.
+- **Расчёт:** `calculateMultiImportCost` — общая логистика/таможня на партию; доля на строку пропорционально инвойсу в RUB.
+- **Форма:** `CalculationLineItemsEditor` — несколько позиций, «№1» + «Название товара» в одной строке, «+ Добавить позицию».
+- **История:** `Calculation.line_items` при 2+ позициях; `CalculationMultiLineSummary` — компактная таблица без горизонтального скролла.
+- **Заголовки таблицы:** Товар · Кол-во · Цена · ₽/шт · вал/шт (моб + десктоп).
 
-### Распознавание Excel/Word на «Новый расчёт» (prod ✅, деплой 2026-06-10)
-- **`.xlsx` / `.docx`:** `lib/office-document-text.ts` (`xlsx`, `mammoth`) → текст → OpenRouter (тот же промпт, что для OCR).
-- **PDF / картинки:** без изменений — OCR.space → OpenRouter.
-- **Env:** Excel/Word — достаточно `OPENROUTER_API_KEY`; OCR-ключ только для PDF/изображений.
-- **Правила распознавания:** первая товарная строка; `1x40hc:180pcs` → qty **180**; multi-FCL → qty **одного контейнера** (22700); China/RMB → **CNY**.
-- Фикстуры: `fixtures/extract-samples/` (xlsx + docx + README с ожидаемыми значениями).
+### UX формы «Новый расчёт» (та же сессия)
+- **До границы / Расходы РФ:** убрано «из ставок»; валюта **USD** / **RUB** внутри поля справа (как в Ставках).
+- Под «До границы»: эквивалент в рублях, напр. `293 000 руб.` (без «примерно»).
+- Под «Расходы РФ»: `по ставкам админки с НДС + банк. %`.
+- **Логика «Расходы РФ»:** фикс. рублёвые строки ставок + `bank_fee_rate` × инвойс в RUB (меняется при смене курса/суммы товара — ожидаемо).
 
-### Ранее в main (PWA + UI)
-- PWA Serwist, баннер установки, таблица «Итог» 6 колонок в ряд.
-- API: закрытый GET `/api/rates`, rate limit OCR, ставки в RSC.
-- Prod: https://imcalc.wessen.online
+### Ранее в prod / main
+- История: меню **⋯** export/import JSON (`CalculationsHistoryMenu`).
+- Excel/Word распознавание (`office-document-text.ts`).
+- PWA Serwist, баннер, таблица «Итог» 6 колонок (однопозиция).
+- Prod: https://imcalc.wessen.online — **после `e380127` нужен деплой** (`update-imcalc.sh`).
 
-## 2. Файлы (сессия 2026-06-10)
+## 2. Файлы (сессия)
 
 | Область | Пути |
 |---------|------|
-| История меню | `components/CalculationsHistoryMenu.tsx`, `CalculationsHistoryTransfer.tsx`, `app/calculations/page.tsx` |
-| Excel/Word | `lib/office-document-text.ts`, `app/api/extract-file-data/route.ts` |
-| Форма новый | `components/NewCalculationForm.tsx`, `components/FileUploadZone.tsx` |
-| Фикстуры | `fixtures/extract-samples/*` |
-| Деплой | `deploy/update-imcalc.sh` |
+| Мультипозиции | `lib/calculate-cost.ts`, `lib/calculation-display.ts`, `lib/storage.ts`, `lib/types.ts` |
+| Extract | `app/api/extract-file-data/route.ts` |
+| Форма | `components/NewCalculationForm.tsx`, `CalculationLineItemsEditor.tsx` |
+| История UI | `CalculationMultiLineSummary.tsx`, `CalculationCard.tsx`, `CompactCalculationResult.tsx`, `lib/calculation-summary.ts` |
+| Фикстуры | `fixtures/extract-samples/README.md` (2 строки в xlsx) |
+| Доки | `PROJECT.md`, `CHANGELOG.md` |
 
-**Git (main):** `764c314` (Excel/Word), `53b6a71` (меню истории), `8bfba5e` (handoff PWA).
+**Git (main):** `e380127` (мульти + UX), `16f0b26` (handoff), `764c314` (Excel/Word).
 
 ## 3. Решения
 
 | Тема | Правило |
 |------|---------|
-| История export/import | Только страница «История», хедер ⋯; не путать с export/import ставок на `/settings/rates` |
-| Office-форматы | Только `.xlsx` и `.docx` (без `.xls`/`.doc` в минимальном патче) |
-| Мультипозиции | Несколько строк в форме; `items[]` из extract; `line_items` в истории при 2+ |
-| Сборка | `npm run build` = `next build --webpack` (Serwist) |
-| PWA баннер после удаления | Отложено; флаги localStorage не сбрасываются |
-| Push / rates:smoke | Отложено |
+| Мультипозиции | Одна валюта на расчёт; банк % от суммарного инвойса в RUB |
+| `line_items` | Только при 2+ позициях; старые расчёты без изменений |
+| Расходы РФ (форма) | Превью = фикс РФ + банк%; не включает полную стоимость товара |
+| До границы (форма) | USD в поле; RUB — подпись под полем по курсу USD |
+| `next-env.d.ts` | Автогенерация; **не коммитить** |
+| n8n | Reference-only, runtime не трогать |
 
 ## 4. Что осталось (по приоритету)
 
-1. Опционально: `rates:smoke` под prod-эталон (актуальные ставки на проде).
-3. Опционально: повтор PWA-баннера после удаления приложения с экрана.
-4. Позже: push-уведомления, Supabase.
+1. **Деплой** `e380127` на VPS (`update-imcalc.sh`).
+2. **`rates:smoke`** под prod-эталон (актуальные ставки).
+3. Мультипозиции (доработки): разные валюты/пошлины по строкам — отложено.
+4. Повтор PWA-баннера после удаления приложения — отложено.
+5. Push-уведомления, Supabase — позже.
 
 ## 5. Блокеры / риски
 
-- **Распознавание office** зависит от OpenRouter; fallback-парсер подстраховывает типовые паттерны (контейнер, RMB).
-- **DOCX** — mammoth даёт «плоский» текст; сложные таблицы могут распознаваться хуже PDF.
-- **xlsx 828KB** в фикстурах — норм для тестов, не для прод-потока.
-- `next-env.d.ts` — автогенерация; не коммитить.
+- **OpenRouter** для extract; fallback — первая строка при сбое LLM.
+- **Мультипозиция xlsx** (`quotation-waste-bin.xlsx`) — 2 одинаковых названия; заголовок карточки `sleeve box (+1)`.
+- **RUB-инвойс:** курс «—» в форме; банк% в превью может не посчитаться — принято как ок.
+- Локально изменён `next-env.d.ts` — не в git.
 
 ## 6. Следующий лучший шаг
 
-По приоритету: **rates:smoke** под prod-эталон или доработки мультипозиций (разные валюты/пошлины по строкам). Перед кодом — `RESUME_PROMPT.md`.
+**Деплой на prod** (`update-imcalc.sh`), затем smoke: `/calculations/new` с `fixtures/extract-samples/quotation-waste-bin.xlsx` → 2 позиции → расчёт → история без горизонтального скролла.
 
 ## 7. Проверка после изменений
 
@@ -73,14 +75,11 @@ npm run typecheck && npm run lint && npm run build
 **Локально:**
 ```bash
 npm run dev -- --webpack -p 3000
-# /calculations — ⋯ меню истории
-# /calculations/new — загрузить fixtures/extract-samples/*.xlsx|.docx
+# /calculations/new — мультипозиции, поля До границы/Расходы РФ
+# /calculations — таблица ₽/шт без бокового скролла
 ```
 
-**Prod smoke:**
+**Prod:**
 ```bash
 update-imcalc.sh
-# или curl manifest/sw/icon — см. deploy/update-imcalc.sh
 ```
-
-**Распознавание:** на VPS нужен `OPENROUTER_API_KEY` (и `OCR_SPACE_API_KEY` для PDF).
